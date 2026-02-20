@@ -1,0 +1,31 @@
+body {
+  margin: 0;
+  background: #0F1117;
+  color: #F5F7FA;
+  font-family: Arial, sans-serif;
+  width: 300px;
+  height: 220px;
+  position: relative;
+  overflow: hidden;
+}
+
+.container {
+  text-align: center;
+}
+
+.estado {
+  font-size: 22px;
+  margin-top: 10px;
+}
+
+.score {
+  margin-top: 5px;
+  font-size: 18px;
+}
+
+#lume {
+  position: absolute;
+  width: 64px;
+  cursor: grab;
+  image-rendering: pixelated;
+}
