@@ -25,7 +25,22 @@ body {
 
 #lume {
   position: absolute;
-  width: 128px;
+  width: 64px;
   cursor: grab;
   image-rendering: pixelated;
+}
+
+.toggle-btn {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background-color: #444;
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.toggle-btn:hover {
+  opacity: 0.8;
 }

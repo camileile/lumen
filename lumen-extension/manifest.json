@@ -5,7 +5,7 @@
   "description": "Sistema de consciência digital",
 
   "icons": {
-    "128": "icon128.png"
+    "128": "icon-verde.png"
   },
 
   "permissions": ["tabs", "storage"],
@@ -18,9 +18,16 @@
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
-      "128": "icon128.png"
+      "128": "icon-verde.png"
     }
   },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
 
   "web_accessible_resources": [
     {
