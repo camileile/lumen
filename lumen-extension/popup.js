@@ -1,26 +1,31 @@
 const estadoEl = document.getElementById("estado");
 const scoreEl = document.getElementById("score");
 const toggleBtn = document.getElementById("toggleOverlay");
+const lumeImg = document.getElementById("lume");
 
 chrome.storage.local.get(["score", "overlayAtivo"], (result) => {
   const score = result.score ?? 50;
 
   let estado = "";
-  let cor = "";
+
+  // remove classes antigas
+  estadoEl.classList.remove("verde", "amarelo", "vermelho");
 
   if (score >= 70) {
     estado = "Verde";
-    cor = "#2ECC71";
+    estadoEl.classList.add("verde");
+    lumeImg.src = "lume-verde.gif";
   } else if (score >= 40) {
     estado = "Amarelo";
-    cor = "#F4D03F";
+    estadoEl.classList.add("amarelo");
+    lumeImg.src = "lume-amarelo.gif";
   } else {
     estado = "Vermelho";
-    cor = "#E74C3C";
+    estadoEl.classList.add("vermelho");
+    lumeImg.src = "lume-vermelho.gif";
   }
 
   estadoEl.innerText = estado;
-  estadoEl.style.color = cor;
   scoreEl.innerText = `Score: ${score}`;
 
   const ativo = result.overlayAtivo ?? true;
