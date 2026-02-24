@@ -1,5 +1,7 @@
+/* ===== HERO ===== */
+
 .hero {
-  min-height: calc(100vh - 72px); /* ocupa quase a tela toda (72px ~ header) */
+  min-height: calc(100vh - 72px); /* ocupa quase a tela toda */
   display: flex;
   align-items: center;
   padding: 28px 0 44px;
@@ -55,13 +57,14 @@
 .mascot {
   width: min(520px, 100%);
   height: auto;
+  filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.62));
   transform: translateY(4px);
 }
 
-/* ===== COMO FUNCIONA (igual ao print) ===== */
+/* ===== COMO FUNCIONA (centralizado com ícones) ===== */
 
 .sectionCentered {
-  margin-top: 80px;
+  margin-top: 40px;
   text-align: center;
 }
 
@@ -114,14 +117,120 @@
   line-height: 1.6;
 }
 
-/* ===== resto do layout ===== */
+/* ===== PRIVACIDADE (layout igual ao print) ===== */
 
-.section {
-  margin-top: 32px;
-  padding: 20px;
+.privacySection {
+  margin-top: 70px;
+  padding: 34px 0;
 }
 
-.sectionTitle {
-  margin: 0 0 14px;
-  font-size: 20px;
+.privacyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* deixa mais equilibrado */
+  gap: 20px; /* reduz espaço entre texto e imagem */
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .privacyGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .privacyImageWrap {
+    order: -1;
+  }
+}
+
+.privacyTitle {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+}
+
+.privacyText {
+  margin-top: 20px;
+  color: var(--muted);
+  line-height: 1.8;
+  max-width: 620px;
+  font-size:24px;
+}
+
+.privacyImageWrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 50px; /* empurra mais ainda */
+}
+
+.privacyImage {
+  width: min(520px, 150%);
+  height: auto;
+  border-radius: 18px;
+  filter: drop-shadow(0 28px 70px rgba(0, 0, 0, 0.55));
+}
+
+/* ===== DASHBOARD PREVIEW ===== */
+
+.previewSection {
+  margin-top: 120px;
+  text-align: center;
+  padding-bottom: 80px;
+}
+
+.previewTitle {
+  font-size: 36px;
+  font-weight: 600;
+  margin-bottom: 40px;
+  letter-spacing: -0.6px;
+}
+
+.previewImageWrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.previewImage {
+  width: min(1000px, 70%);
+  border-radius: 22px;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.6);
+  transition: transform 0.4s ease;
+}
+
+.previewImage:hover {
+  transform: translateY(-6px) scale(1.01);
+}
+
+/* ===== CTA FINAL ===== */
+
+.finalCta {
+  margin-top: 90px;
+  padding: 90px 0 60px;
+  text-align: center;
+}
+
+.finalCtaTitle {
+  font-size: 34px;
+  font-weight: 500;
+  margin: 0 0 22px;
+  letter-spacing: -0.6px;
+  line-height: 1.2;
+}
+
+.finalCtaButton {
+  display: inline-block;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-weight: 600;
+  background: rgba(61, 118, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 60px rgba(61, 118, 255, 0.25);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.finalCtaButton:hover {
+  transform: translateY(-3px);
+  background: rgba(61, 118, 255, 1);
 }

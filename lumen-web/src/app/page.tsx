@@ -74,15 +74,58 @@ export default function Home() {
         </div>
       </section>
 
-      {/* PRIVACIDADE */}
-      <section id="privacidade" className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>Privacidade em primeiro.</h2>
+      
+     {/* PRIVACIDADE */}
+<section id="privacidade" className={styles.privacySection}>
+  <div className={styles.privacyGrid}>
 
-        <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
-          O Lumen não coleta dados sensíveis. A análise é focada no conteúdo da página e não em você.
-        </p>
-      </section>
+    <div>
+      <h2 className={styles.privacyTitle}>Privacidade como princípio.</h2>
 
+      <p className={styles.privacyText}>
+        O Lumen analisa apenas dados públicos de navegação e não coleta mensagens, senhas ou informações sensíveis. 
+        <br />Seu comportamento não é exposto — apenas refletido para você.
+  
+      </p>
+    </div>
+
+    <div className={styles.privacyImageWrap}>
+      <img
+        className={styles.privacyImage}
+        src="/privacy.png"
+        alt="Privacidade no Lumen"
+      />
+    </div>
+
+  </div>
+</section>
+
+{/* DASHBOARD PREVIEW */}
+<section className={styles.previewSection}>
+  <h2 className={styles.previewTitle}>
+    Dados claros. Decisões melhores.
+  </h2>
+
+  <div className={styles.previewImageWrap}>
+    <img
+      className={styles.previewImage}
+      src="/dashboard-preview.png"
+      alt="Dashboard Lumen"
+    />
+  </div>
+
+  
+</section>
+{/* CTA FINAL */}
+<section className={styles.finalCta}>
+  <h2 className={styles.finalCtaTitle}>
+    Comece a enxergar sua vida digital <br /> com mais clareza.
+  </h2>
+
+  <a className={styles.finalCtaButton} href="#">
+    Instalar extensão
+  </a>
+</section>
     </div>
   );
 }

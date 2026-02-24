@@ -52,3 +52,125 @@ a {
 .btn:hover {
   background: #1F489D;
 }
+
+/* ===== FOOTER ===== */
+
+.footer {
+  margin-top: 120px;
+  padding: 60px 0 20px;
+  background: rgba(16, 25, 53, 0.4);
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.footerContainer {
+  width: min(1200px, 92%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr 1fr;
+  gap: 60px;
+}
+
+@media (max-width: 900px) {
+  .footerContainer {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+}
+
+.footerBrand p {
+  margin-top: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 320px;
+}
+
+.footerLogo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+.footerSocial {
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+}
+
+.footerSocial span {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.footerSocial span:hover {
+  background: rgba(255,255,255,0.18);
+}
+
+.footer h4 {
+  margin: 0 0 16px;
+  font-weight: 600;
+}
+
+.footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer li {
+  margin-bottom: 10px;
+}
+
+.footer a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.footer a:hover {
+  color: white;
+}
+
+.footerInputWrap {
+  display: flex;
+  background: rgba(255,255,255,0.08);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.footerInputWrap input {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: white;
+}
+
+.footerInputWrap button {
+  padding: 10px 14px;
+  border: none;
+  background: rgba(61,118,255,0.8);
+  color: white;
+  cursor: pointer;
+}
+
+.footerSmall {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.footerBottom {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 13px;
+  opacity: 0.6;
+}
