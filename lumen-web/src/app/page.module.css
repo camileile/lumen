@@ -1,0 +1,127 @@
+.hero {
+  min-height: calc(100vh - 72px); /* ocupa quase a tela toda (72px ~ header) */
+  display: flex;
+  align-items: center;
+  padding: 28px 0 44px;
+}
+
+.heroGrid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 56px;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    min-height: auto;
+    padding: 26px 0 26px;
+  }
+
+  .heroGrid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .heroRight {
+    order: -1;
+  }
+}
+
+.heroTitle {
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  line-height: 1.05;
+  margin: 0;
+  max-width: 680px;
+}
+
+.heroText {
+  font-size: 18px;
+  margin-top: 18px;
+  color: var(--muted);
+  max-width: 640px;
+  line-height: 1.7;
+}
+
+.heroRight {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mascot {
+  width: min(520px, 100%);
+  height: auto;
+  transform: translateY(4px);
+}
+
+/* ===== COMO FUNCIONA (igual ao print) ===== */
+
+.sectionCentered {
+  margin-top: 80px;
+  text-align: center;
+}
+
+.sectionTitleCentered {
+  font-size: 34px;
+  font-weight: 600;
+  margin: 0 0 48px;
+}
+
+.grid3Centered {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .grid3Centered {
+    grid-template-columns: 1fr;
+  }
+}
+
+.featureCard {
+  background: rgba(16, 25, 53, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 34px 24px;
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-6px);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(16, 25, 53, 0.62);
+}
+
+.icon {
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 14px;
+}
+
+.featureCard h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.featureCard p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ===== resto do layout ===== */
+
+.section {
+  margin-top: 32px;
+  padding: 20px;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
