@@ -7,16 +7,10 @@ export type AccessItem = {
 
 export type DashboardData = {
   user: { name: string };
-
-  // score principal
   score: number;
-  statusLabel: "Saudável" | "Atenção" | "Crítico";
+  statusLabel: "Iniciante" | "Saudável" | "Atenção" | "Crítico"; // Adicionei 'Iniciante'
   statusHint: string;
-
-  // XP do usuário (0..100)
   xp: number;
-
-  // dados (podem vir vazios na 1ª vez)
   scoreSeries: { day: string; value: number }[];
   weeklySeries: { day: string; value: number }[];
   distribution: { label: string; value: number; colorKey: "good" | "neutral" | "warn" | "bad" }[];
@@ -30,9 +24,9 @@ export function getDashboardMock(firstTime = false): DashboardData {
     return {
       user: { name: "Lumen" },
       score: 0,
-      statusLabel: "Atenção",
+      statusLabel: "Iniciante", // Alterado de Atenção para Iniciante
       statusHint: "Comece analisando uma URL para gerar seu primeiro score.",
-      xp: 8,
+      xp: 0, // ✅ CORRIGIDO: Agora começa em 0%
       scoreSeries: [],
       weeklySeries: [],
       distribution: [],
@@ -42,14 +36,13 @@ export function getDashboardMock(firstTime = false): DashboardData {
     };
   }
 
+  // MOCK COM DADOS (Robertin)
   return {
     user: { name: "Robertin" },
-
     score: 82,
     statusLabel: "Saudável",
     statusHint: "Seu consumo informacional está equilibrado.",
     xp: 64,
-
     scoreSeries: [
       { day: "seg", value: 12 },
       { day: "ter", value: 18 },
@@ -59,7 +52,6 @@ export function getDashboardMock(firstTime = false): DashboardData {
       { day: "sáb", value: 32 },
       { day: "dom", value: 40 },
     ],
-
     weeklySeries: [
       { day: "seg", value: 10 },
       { day: "ter", value: 16 },
@@ -69,18 +61,14 @@ export function getDashboardMock(firstTime = false): DashboardData {
       { day: "sáb", value: 30 },
       { day: "dom", value: 38 },
     ],
-
     distribution: [
       { label: "Confiável", value: 50, colorKey: "good" },
       { label: "Neutro", value: 30, colorKey: "neutral" },
       { label: "Sensacionalista", value: 15, colorKey: "warn" },
       { label: "Desinformação", value: 5, colorKey: "bad" },
     ],
-
     trend: { title: "Tendência", subtitle: "Melhorando" },
-
     insight: "Você consumiu 35% mais fontes confiáveis que na semana passada. Continue assim!",
-
     lastAccess: [
       { id: "1", label: "A", title: "noticias-base-e-confiaveis", url: "siteconfiavel.com.br/noticias-base-e-confiaveis" },
       { id: "2", label: "A", title: "clima-atualizado", url: "fontanarede.org.br/estudo/clima-atualizado" },
