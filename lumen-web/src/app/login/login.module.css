@@ -1,0 +1,189 @@
+.wrap {
+  min-height: calc(100vh - 72px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+.card {
+  width: min(420px, 92%);
+  background: rgba(16, 25, 53, 0.55);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 22px;
+  padding: 26px 26px 22px;
+  box-shadow: 0 40px 120px rgba(0,0,0,0.55);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.brand img {
+  width: 28px;
+  height: auto;
+}
+
+.title {
+  text-align: center;
+  font-size: 30px;
+  font-weight: 600;
+  margin: 6px 0 6px;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--muted);
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+
+.field {
+  margin-top: 12px;
+}
+
+.label {
+  display: block;
+  font-size: 13px;
+  color: rgba(255,255,255,0.78);
+  margin-bottom: 6px;
+}
+
+/* ===== INPUT ===== */
+
+.input {
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  color: white;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  border-color: rgba(40,92,201,0.65);
+  box-shadow: 0 0 0 3px rgba(40,92,201,0.22);
+}
+
+/* ===== PASSWORD WRAP ===== */
+
+.passwordWrap {
+  position: relative;
+}
+
+.passwordWrap input {
+  padding-right: 48px; /* espaço pro ícone */
+}
+
+/* ===== BOTÃO OLHINHO BONITO ===== */
+
+.showBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+
+  background: transparent;
+  border: 1px solid transparent;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  color: rgba(255,255,255,0.65);
+
+  transition: all 0.2s ease;
+
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.showBtn:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+  color: rgba(255,255,255,0.92);
+}
+
+.showBtn:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.showBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(40,92,201,0.25);
+}
+
+/* ===== BOTÕES ===== */
+
+.primaryBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #285CC9;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 18px 55px rgba(40,92,201,0.28);
+}
+
+.primaryBtn:hover {
+  filter: brightness(1.05);
+}
+
+.divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: rgba(255,255,255,0.55);
+  font-size: 12px;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  height: 1px;
+  background: rgba(255,255,255,0.10);
+}
+
+.secondaryBtn {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.92);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  background: rgba(255,255,255,0.09);
+}
+
+.bottom {
+  margin-top: 14px;
+  text-align: center;
+  color: rgba(255,255,255,0.70);
+  font-size: 13px;
+}
+
+.bottom a {
+  color: rgba(61,118,255,1);
+  text-decoration: none;
+  font-weight: 600;
+}

@@ -174,3 +174,55 @@ a {
   font-size: 13px;
   opacity: 0.6;
 }
+
+/* ===== RESPONSIVO GLOBAL ===== */
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* botão não estourar em telas pequenas */
+.btn,
+.btn1,
+.btn2 {
+  white-space: nowrap;
+}
+
+/* container já existe, mas garantimos um padding confortável no mobile */
+.container,
+.containerWide {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.topNav {
+  flex-wrap: wrap;          /* quebra linha no mobile */
+  justify-content: flex-end;
+  row-gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .topNav {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 700px) {
+  .footer {
+    padding: 44px 0 16px;
+  }
+
+  .footerContainer {
+    gap: 28px;
+  }
+
+  .footerInputWrap {
+    width: 100%;
+  }
+
+  .footerInputWrap input {
+    min-width: 0;
+  }
+}

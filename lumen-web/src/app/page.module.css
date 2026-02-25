@@ -234,3 +234,30 @@
   transform: translateY(-3px);
   background: rgba(61, 118, 255, 1);
 }
+
+/* ===== RESPONSIVO LANDING ===== */
+
+@media (max-width: 700px) {
+  .heroTitle {
+    font-size: 36px;
+    letter-spacing: -0.6px;
+  }
+
+  .heroText {
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  .mascot {
+    width: min(360px, 100%);
+    transform: none;
+  }
+
+  .sectionTitleCentered,
+  .privacyTitle,
+  .previewTitle,
+  .finalCtaTitle {
+    font-size: 26px;
+    line-height: 1.2;
+  }
+}
