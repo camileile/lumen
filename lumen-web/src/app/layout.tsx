@@ -55,7 +55,7 @@ export default function RootLayout({
               <nav className="topNav" style={{ display: "flex", gap: 18, alignItems: "center" }}>
                 <a className="btn1" href="#como-funciona">Como funciona</a>
                 <a className="btn1" href="#privacidade">Privacidade</a>
-                <a className="btn1" href="/dashboard">Dashboard</a>
+                <a className="btn1" href="/login">Dashboard</a>
                 <a
                   href="#instalar"
                   style={{
