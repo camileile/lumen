@@ -11,9 +11,10 @@ datasource db {
 
 model User {
   id        String     @id @default(uuid())
+  name      String     @default("")
   email     String     @unique
   password  String
-  analyses  Analysis[] 
+  analyses  Analysis[]
   createdAt DateTime   @default(now())
 }
 

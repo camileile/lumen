@@ -7,11 +7,20 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
-    "dotenv": "^17.3.1"
+    "dotenv": "^17.3.1",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19"
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.3.2",
+    "prisma": "^7.4.1"
   }
 }

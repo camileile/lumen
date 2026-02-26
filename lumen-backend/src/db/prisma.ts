@@ -1,23 +1,11 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import dotenv from "dotenv";
-import path from "path";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
-// Força o carregamento do .env da raiz, não importa onde o processo comece
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-
-// ensure DATABASE_URL is defined before creating the client
-if (!process.env.DATABASE_URL) {
-  throw new Error("Missing DATABASE_URL in .env");
-}
-
-const databaseUrl: string = process.env.DATABASE_URL;
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: {
-      url: databaseUrl
-    }
-  }
+const adapter = new PrismaBetterSqlite3({
+  url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
 });
+
+const prisma = new PrismaClient({ adapter });
 
 export default prisma;

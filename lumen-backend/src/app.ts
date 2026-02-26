@@ -1,12 +1,18 @@
+import "dotenv/config";
 import express from "express";
-import cors from "cors"; // Instale com: npm install cors
-import routes from "./routes";
+import cors from "cors";
 
-const app = express();
+import { authRoutes } from "./routes/auth.routes";
+import { errorMiddleware } from "./middleware/error.middleware";
 
-app.use(cors()); // Libera o acesso para a extensão
-app.use(express.json()); // Permite ler o corpo (body) das requisições POST
+export const app = express();
 
-app.use(routes);
+app.use(cors({ origin: "http://localhost:3001" }));
+app.use(express.json());
 
-export default app;
+app.get("/health", (_req, res) => res.json({ ok: true }));
+
+app.use("/auth", authRoutes);
+
+// sempre por último
+app.use(errorMiddleware);

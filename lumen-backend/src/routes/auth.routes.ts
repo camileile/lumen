@@ -1,10 +1,11 @@
 import { Router } from "express";
-// Removido o 's' de controllers para bater com o nome da sua pasta
-import { login, register } from "../controllers/auth.controller"; // Sem o 's'
+import { loginController, meController, registerController } from "../controllers/auth.controller";
+import { validateBody } from "../middleware/validate.middleware";
+import { loginSchema, registerSchema } from "../schemas/auth.schemas";
+import { authMiddleware } from "../middleware/auth.middleware";
 
-const router = Router();
+export const authRoutes = Router();
 
-router.post("/login", login);
-router.post("/register", register);
-
-export default router;
+authRoutes.post("/register", validateBody(registerSchema), registerController);
+authRoutes.post("/login", validateBody(loginSchema), loginController);
+authRoutes.get("/me", authMiddleware, meController);

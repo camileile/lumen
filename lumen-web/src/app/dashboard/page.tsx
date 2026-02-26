@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import styles from "./dashboard.module.css";
 import { getDashboardMock } from "../lib/dashboardMock";
+import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth"; 
 import { ChevronRight, X, User, Download, Settings, Trophy, Pencil } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -39,9 +40,6 @@ function xpText(xp: number) {
   return "Primeiros passos!";
 }
 
-/** * CORREÇÃO: ScoreLine ajustado para não cortar o texto do eixo X 
- * Adicionado margin bottom e dy para empurrar as legendas.
- */
 function ScoreLine({ data, showAxis = false }: { data: { day: string; value: number }[], showAxis?: boolean }) {
   return (
     <div style={{ height: "100%", width: "100%" }}>
@@ -57,8 +55,8 @@ function ScoreLine({ data, showAxis = false }: { data: { day: string; value: num
             axisLine={false}
             tickLine={false}
             tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
-            interval={0} // Garante que todos os dias apareçam
-            dy={10}      // Afasta o texto da linha do gráfico
+            interval={0}
+            dy={10}
           />
           <Tooltip 
             contentStyle={{
@@ -84,8 +82,6 @@ function ScoreLine({ data, showAxis = false }: { data: { day: string; value: num
   );
 }
 
-/** * CORREÇÃO: WeeklyBars com margin para evitar nomes encavalados na base.
- */
 function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
   return (
     <div style={{ height: "100%", width: "100%" }}>
@@ -120,8 +116,25 @@ function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
 }
 
 export default function DashboardPage() {
+  const [user, setUser] = useState<AuthUser | null>(null); // Estado do usuário real
   const [firstTime, setFirstTime] = useState(true);
   const [demo, setDemo] = useState(true); 
+
+  // Lógica de Autenticação solicitada
+  useEffect(() => {
+    const token = getToken();
+    if (!token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    me(token)
+      .then(({ user }) => setUser(user))
+      .catch(() => {
+        clearToken();
+        window.location.href = "/login";
+      });
+  }, []);
 
   useEffect(() => {
     const done = localStorage.getItem("lumen_has_data_v1");
@@ -139,11 +152,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem(NAME_KEY);
-    const initial = (saved && saved.trim()) || (data?.user?.name ? data.user.name : "Lumen");
+    // Prioriza: 1. Nome salvo no localStorage, 2. Nome vindo da API, 3. Mock data, 4. "Lumen"
+    const initial = (saved && saved.trim()) || user?.name || (data?.mascot?.name ? data.mascot.name : "Lumen");
 
     setName(initial);
     setDraftName(initial);
-  }, [data?.user?.name]);
+  }, [data?.mascot?.name, user?.name]);
 
   function startEditName() {
     setDraftName(name);
