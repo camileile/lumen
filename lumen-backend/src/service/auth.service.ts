@@ -2,10 +2,13 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../db/prisma";
 
+// ALTERAÇÃO AQUI: Passando o userId direto no objeto do payload
 function signToken(userId: string) {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET não configurado");
-  return jwt.sign({}, secret, { subject: userId, expiresIn: "7d" });
+  
+  // Agora o token carrega { userId: "..." }
+  return jwt.sign({ userId }, secret, { expiresIn: "7d" });
 }
 
 export async function register(name: string, email: string, password: string) {
@@ -15,17 +18,8 @@ export async function register(name: string, email: string, password: string) {
   const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
-    data: {
-      name,
-      email,
-      password: passwordHash,
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-    },
+    data: { name, email, password: passwordHash },
+    select: { id: true, name: true, email: true, createdAt: true },
   });
 
   return { user, token: signToken(user.id) };

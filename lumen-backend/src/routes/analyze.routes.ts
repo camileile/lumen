@@ -1,9 +1,9 @@
 import { Router } from "express";
-// Importe o controller da sua pasta de controllers
-import { analyzeController } from "../controllers/analyze.controller"; // Sem o 's'
+import { analyzeController } from "../controllers/analyze.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
 
-const router = Router();
+const analyzeRoutes = Router();
 
-router.post("/", analyzeController);
+analyzeRoutes.post("/", authMiddleware, analyzeController);
 
-export default router;
+export default analyzeRoutes;
