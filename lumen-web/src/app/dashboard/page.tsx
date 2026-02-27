@@ -2,8 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import styles from "./dashboard.module.css";
+
 import { getDashboardMock } from "../lib/dashboardMock";
-import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth"; 
+import { getHistory } from "../lib/history";
+import { buildDashboardFromHistory } from "../lib/dashboard";
+import type { DashboardData } from "../lib/types";
+
+import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth";
 import { ChevronRight, X, User, Download, Settings, Trophy, Pencil } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -27,8 +32,8 @@ const TOUR_KEY = "lumen_dashboard_tour_done_v1";
 const NAME_KEY = "lumen_user_name_v1";
 
 function mascotByScore(score: number, firstTime: boolean, demo: boolean) {
-  if (demo) return "/lume-verde.gif"; 
-  if (firstTime) return "/lume-amarelo.gif"; 
+  if (demo) return "/lume-verde.gif";
+  if (firstTime) return "/lume-amarelo.gif";
   if (score >= 70) return "/lume-verde.gif";
   if (score >= 40) return "/lume-amarelo.gif";
   return "/lume-vermelho.gif";
@@ -40,40 +45,43 @@ function xpText(xp: number) {
   return "Primeiros passos!";
 }
 
-function ScoreLine({ data, showAxis = false }: { data: { day: string; value: number }[], showAxis?: boolean }) {
+function ScoreLine({
+  data,
+  showAxis = false,
+}: {
+  data: { day: string; value: number }[];
+  showAxis?: boolean;
+}) {
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart 
-          data={data} 
-          margin={{ top: 5, right: 10, left: 10, bottom: showAxis ? 25 : 5 }}
-        >
+        <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: showAxis ? 25 : 5 }}>
           <CartesianGrid strokeOpacity={0.12} vertical={false} />
-          <XAxis 
-            dataKey="day" 
-            hide={!showAxis} 
+          <XAxis
+            dataKey="day"
+            hide={!showAxis}
             axisLine={false}
             tickLine={false}
             tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
             interval={0}
             dy={10}
           />
-          <Tooltip 
+          <Tooltip
             contentStyle={{
               background: "#1a1c23",
               border: "1px solid rgba(255,255,255,0.12)",
               borderRadius: 10,
               fontSize: "12px",
-              color: "#fff"
+              color: "#fff",
             }}
             itemStyle={{ color: "#78ffa0" }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="value" 
-            stroke="#78ffa0" 
-            strokeWidth={3} 
-            dot={false} 
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#78ffa0"
+            strokeWidth={3}
+            dot={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
         </LineChart>
@@ -86,13 +94,10 @@ function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart 
-          data={data} 
-          margin={{ top: 10, right: 5, left: 5, bottom: 25 }}
-        >
+        <BarChart data={data} margin={{ top: 10, right: 5, left: 5, bottom: 25 }}>
           <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-          <XAxis 
-            dataKey="day" 
+          <XAxis
+            dataKey="day"
             axisLine={false}
             tickLine={false}
             tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
@@ -116,11 +121,15 @@ function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<AuthUser | null>(null); // Estado do usuário real
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [firstTime, setFirstTime] = useState(true);
-  const [demo, setDemo] = useState(true); 
+  const [demo, setDemo] = useState(true);
 
-  // Lógica de Autenticação solicitada
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loadingDash, setLoadingDash] = useState(false);
+  const [dashError, setDashError] = useState<string>("");
+
+  // Auth
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -136,15 +145,51 @@ export default function DashboardPage() {
       });
   }, []);
 
+  // firstTime: mantém compatibilidade com sua flag local
   useEffect(() => {
     const done = localStorage.getItem("lumen_has_data_v1");
     setFirstTime(!done);
   }, []);
 
-  const data = useMemo(
-    () => getDashboardMock(demo ? false : firstTime),
-    [firstTime, demo]
-  );
+  async function refreshDashboard() {
+    setLoadingDash(true);
+    setDashError("");
+
+    try {
+      const { items } = await getHistory();
+
+      const hasData = !!items?.length;
+      localStorage.setItem("lumen_has_data_v1", hasData ? "1" : "");
+      setFirstTime(!hasData);
+
+      if (!hasData) {
+        setDashboardData(null);
+        return;
+      }
+
+      const dash = buildDashboardFromHistory(items, "Lumen");
+      setDashboardData(dash);
+    } catch (e: any) {
+      setDashError(e?.message || "Falha ao carregar dashboard");
+      setDashboardData(null);
+    } finally {
+      setLoadingDash(false);
+    }
+  }
+
+  // Quando desliga demo, carrega do backend
+  useEffect(() => {
+    if (demo) return;
+    const token = getToken();
+    if (!token) return;
+    refreshDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo]);
+
+  const data = useMemo(() => {
+    if (demo) return getDashboardMock(false);
+    return dashboardData ?? getDashboardMock(true);
+  }, [demo, dashboardData]);
 
   const [name, setName] = useState("Lumen");
   const [editingName, setEditingName] = useState(false);
@@ -152,9 +197,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem(NAME_KEY);
-    // Prioriza: 1. Nome salvo no localStorage, 2. Nome vindo da API, 3. Mock data, 4. "Lumen"
     const initial = (saved && saved.trim()) || user?.name || (data?.mascot?.name ? data.mascot.name : "Lumen");
-
     setName(initial);
     setDraftName(initial);
   }, [data?.mascot?.name, user?.name]);
@@ -197,7 +240,7 @@ export default function DashboardPage() {
       id: "s3",
       anchor: "history",
       title: "Últimos acessos",
-      text: "Seu histórico recente aparece aqui. Depois, isso virá do banco via API do backend.",
+      text: "Seu histórico recente aparece aqui. Agora vem do banco via API do backend (quando Demo OFF).",
     },
     {
       id: "s4",
@@ -219,6 +262,13 @@ export default function DashboardPage() {
 
   const current = steps[step];
 
+  function connectExtension() {
+    const token = getToken();
+    if (!token) return alert("Faça login primeiro.");
+    window.postMessage({ type: "LUMEN_CONNECT", token }, "*");
+    alert("Extensão conectada! Agora ela pode registrar análises no seu dashboard.");
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
@@ -228,12 +278,27 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <button type="button" onClick={() => setDemo((d) => !d)} className={styles.demoBtn}>
+            {demo ? "Modo Demo ON" : "Modo Demo OFF"}
+          </button>
+
           <button
             type="button"
-            onClick={() => setDemo((d) => !d)}
+            onClick={connectExtension}
             className={styles.demoBtn}
+            title="Envia o token para a extensão via postMessage"
           >
-            {demo ? "Modo Demo ON" : "Modo Demo OFF"}
+            Conectar extensão
+          </button>
+
+          <button
+            type="button"
+            onClick={() => refreshDashboard()}
+            className={styles.demoBtn}
+            disabled={demo || loadingDash}
+            title={demo ? "Desative o demo para carregar do backend" : "Recarregar dados do backend"}
+          >
+            {loadingDash ? "Atualizando..." : "Atualizar"}
           </button>
 
           <div className={styles.userArea}>
@@ -244,6 +309,12 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {!demo && dashError && (
+        <div style={{ margin: "12px 0", color: "#ff6b6b" }}>
+          {dashError}
+        </div>
+      )}
 
       <main className={styles.grid}>
         <section className={`${styles.card} ${styles.avatarCard}`}>
@@ -274,13 +345,7 @@ export default function DashboardPage() {
                     if (e.key === "Escape") cancelEditName();
                   }}
                 />
-                <button
-                  className={styles.iconBtn}
-                  type="button"
-                  onClick={() => saveName()}
-                  aria-label="Salvar nome"
-                  title="Salvar"
-                >
+                <button className={styles.iconBtn} type="button" onClick={() => saveName()} aria-label="Salvar nome" title="Salvar">
                   OK
                 </button>
               </>
@@ -305,9 +370,15 @@ export default function DashboardPage() {
           </div>
 
           <div className={styles.segment}>
-            <button className={styles.segmentBtn} type="button">Base</button>
-            <button className={`${styles.segmentBtn} ${styles.segmentActive}`} type="button">Estável</button>
-            <button className={styles.segmentBtn} type="button">Evoluindo</button>
+            <button className={styles.segmentBtn} type="button">
+              Base
+            </button>
+            <button className={`${styles.segmentBtn} ${styles.segmentActive}`} type="button">
+              Estável
+            </button>
+            <button className={styles.segmentBtn} type="button">
+              Evoluindo
+            </button>
           </div>
 
           <div className={styles.insight}>
@@ -367,13 +438,17 @@ export default function DashboardPage() {
             <div className={styles.bars}>
               {data.distribution.map((item) => (
                 <div key={item.label} className={styles.barRow}>
-                  <span style={{fontSize: 12}}>{item.label}</span>
+                  <span style={{ fontSize: 12 }}>{item.label}</span>
                   <div className={styles.barTrack}>
                     <div
                       className={`${styles.barFill} ${
-                        item.colorKey === "good" ? styles.bar_good : 
-                        item.colorKey === "neutral" ? styles.bar_neutral : 
-                        item.colorKey === "warn" ? styles.bar_warn : styles.bar_bad
+                        item.colorKey === "good"
+                          ? styles.bar_good
+                          : item.colorKey === "neutral"
+                          ? styles.bar_neutral
+                          : item.colorKey === "warn"
+                          ? styles.bar_warn
+                          : styles.bar_bad
                       }`}
                       style={{ width: `${item.value}%` }}
                     />
@@ -416,7 +491,9 @@ export default function DashboardPage() {
                   <div className={styles.historyText}>
                     <div className={styles.historyUrl}>{a.url}</div>
                   </div>
-                  <button className={styles.smallBtn} type="button">Verificar fonte</button>
+                  <button className={styles.smallBtn} type="button">
+                    Verificar fonte
+                  </button>
                 </div>
               ))
             )}
@@ -455,7 +532,9 @@ export default function DashboardPage() {
             <div className={styles.tourTitle}>{current.title}</div>
             <div className={styles.tourText}>{current.text}</div>
             <div className={styles.tourFooter}>
-              <span className={styles.tourSteps}>{step + 1} / {steps.length}</span>
+              <span className={styles.tourSteps}>
+                {step + 1} / {steps.length}
+              </span>
               <div className={styles.tourBtns}>
                 <button
                   className={styles.tourGhost}
@@ -466,11 +545,7 @@ export default function DashboardPage() {
                   Voltar
                 </button>
                 {step < steps.length - 1 ? (
-                  <button
-                    className={styles.tourPrimary}
-                    type="button"
-                    onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                  >
+                  <button className={styles.tourPrimary} type="button" onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>
                     Próximo
                   </button>
                 ) : (

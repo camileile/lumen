@@ -1,28 +1,4 @@
-export type AccessItem = {
-  id: string;
-  url: string;
-  title: string;
-  label: "A" | "B" | "C" | "D";
-};
-
-export type DashboardData = {
-  // Renomeado de user para mascot
-  mascot: { name: string };
-  score: number;
-  statusLabel: "Iniciante" | "Saudável" | "Atenção" | "Crítico";
-  statusHint: string;
-  xp: number;
-  scoreSeries: { day: string; value: number }[];
-  weeklySeries: { day: string; value: number }[];
-  distribution: {
-    label: string;
-    value: number;
-    colorKey: "good" | "neutral" | "warn" | "bad";
-  }[];
-  trend: { title: string; subtitle: string };
-  insight: string;
-  lastAccess: AccessItem[];
-};
+import type { DashboardData } from "./types";
 
 export function getDashboardMock(firstTime = false): DashboardData {
   if (firstTime) {
@@ -75,7 +51,8 @@ export function getDashboardMock(firstTime = false): DashboardData {
       title: "Tendência",
       subtitle: "Consumo mais crítico e equilibrado",
     },
-    insight: "Você reduziu 12% o consumo de fontes sensacionalistas nos últimos 7 dias. Seu padrão informacional está mais estável e consciente.",
+    insight:
+      "Você reduziu 12% o consumo de fontes sensacionalistas nos últimos 7 dias. Seu padrão informacional está mais estável e consciente.",
     lastAccess: [
       { id: "1", label: "A", title: "Relatório econômico anual", url: "economiaoficial.gov.br/relatorio-anual-2025" },
       { id: "2", label: "A", title: "Atualização climática global", url: "climatecenter.org/atualizacao-global" },

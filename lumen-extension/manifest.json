@@ -1,15 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Lumen",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Sistema de consciência digital",
 
-  "icons": {
-    "128": "icon-verde.png"
-  },
-
-  "permissions": ["tabs", "storage"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["tabs", "storage", "activeTab"],
+  "host_permissions": ["<all_urls>", "http://localhost:3000/*"],
 
   "background": {
     "service_worker": "background.js"
@@ -22,10 +18,15 @@
     }
   },
 
+  "icons": {
+    "128": "icon-verde.png"
+  },
+
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
   ],
 
@@ -34,7 +35,10 @@
       "resources": [
         "lume-verde.gif",
         "lume-amarelo.gif",
-        "lume-vermelho.gif"
+        "lume-vermelho.gif",
+        "icon-verde.png",
+        "icon-amarelo.png",
+        "icon-vermelho.png"
       ],
       "matches": ["<all_urls>"]
     }

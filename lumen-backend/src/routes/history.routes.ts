@@ -1,9 +1,10 @@
 import { Router } from "express";
-// Importando do caminho correto
-import { getHistory } from "../controllers/history.controller"; // Sem o 's'
+import { getHistory } from "../controllers/history.controller";
+import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.get("/", getHistory);
+// ✅ com auth
+router.get("/", authMiddleware, getHistory);
 
 export default router;

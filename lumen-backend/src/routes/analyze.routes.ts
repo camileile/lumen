@@ -1,9 +1,9 @@
 import { Router } from "express";
-import { analyzeController } from "../controllers/analyze.controller";
 import { authMiddleware } from "../middleware/auth.middleware";
+import { analyzeController } from "../controllers/analyze.controller";
 
-const analyzeRoutes = Router();
+const router = Router();
 
-analyzeRoutes.post("/", authMiddleware, analyzeController);
+router.post("/", authMiddleware, analyzeController);
 
-export default analyzeRoutes;
+export default router;

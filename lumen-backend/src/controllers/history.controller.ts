@@ -1,10 +1,21 @@
-import { Request, Response } from "express";
+import { Response } from "express";
+import prisma from "../db/prisma";
+import { AuthedRequest } from "../middleware/auth.middleware";
 
-export const getHistory = async (req: Request, res: Response) => {
+export async function getHistory(req: AuthedRequest, res: Response) {
   try {
-    // Lógica para buscar histórico no banco
-    return res.status(200).json({ history: [] });
-  } catch (error) {
-    return res.status(500).json({ error: "Erro ao buscar histórico" });
+    if (!req.userId) return res.status(401).json({ error: "Não autenticado" });
+
+    const items = await prisma.analysis.findMany({
+      where: { userId: req.userId },
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    });
+
+    // ✅ o front espera { items: [...] }
+    return res.json({ items });
+  } catch (e: any) {
+    console.error(e);
+    return res.status(500).json({ error: e?.message || "Erro ao buscar histórico" });
   }
-};
+}

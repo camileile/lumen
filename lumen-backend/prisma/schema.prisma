@@ -1,5 +1,3 @@
-// lumen-backend/prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,21 +6,27 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id        String     @id @default(uuid())
+  name      String     @default("")
   email     String     @unique
   password  String
-  analyses  Analysis[] 
   createdAt DateTime   @default(now())
+
+  analyses  Analysis[]
 }
 
 model Analysis {
-  id       String @id @default(cuid())
-  url      String   // 👈 ADICIONA ISSO
-  domain   String
-  category String
-  score    Int
-  summary  String
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
+  id        String   @id @default(uuid())
+  url       String
+  domain    String
+  category  String
+  score     Int
+  summary   String
+  text      String
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 }
