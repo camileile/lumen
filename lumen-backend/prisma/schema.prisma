@@ -6,24 +6,23 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  // Remova a linha da url daqui por enquanto
+  url      = env("DATABASE_URL")
 }
-
 model User {
   id        String     @id @default(uuid())
-  name      String     @default("")
   email     String     @unique
   password  String
-  analyses  Analysis[]
+  analyses  Analysis[] 
   createdAt DateTime   @default(now())
 }
 
 model Analysis {
-  id        String   @id @default(uuid())
-  text      String   
-  result    String   
-  score     Float    
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
+  id       String @id @default(cuid())
+  url      String   // 👈 ADICIONA ISSO
+  domain   String
+  category String
+  score    Int
+  summary  String
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
 }

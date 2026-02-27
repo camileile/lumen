@@ -22,4 +22,5 @@ export function authMiddleware(req: AuthedRequest, res: Response, next: NextFunc
   } catch {
     return res.status(401).json({ error: "Token inválido/expirado" });
   }
+console.log("Authorization header:", req.headers.authorization);
 }
