@@ -1,130 +1,171 @@
 import type { DashboardData } from "./types";
 import type { AnalysisItem } from "./history";
+import { normalizeLabel } from "./history";
 
-const pesos = { A: 3, B: 1, C: -2, D: -5 } as const;
-
-function catToLabel(it: AnalysisItem): "A" | "B" | "C" | "D" {
-  if (it.label) return it.label;
-  const c = String(it.category || "").toLowerCase();
-  if (c === "confiavel") return "A";
-  if (c === "neutro") return "B";
-  if (c === "sensacionalista") return "C";
-  if (c === "desinformacao") return "D";
-  return "B";
-}
+type LabelABCD = "A" | "B" | "C" | "D";
 
 function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
-function scoreFromPesos(ps: number[]) {
-  if (!ps.length) return 0;
-  const soma = ps.reduce((x, y) => x + y, 0);
-  const media = soma / ps.length;
-  return clamp(Math.round(((media + 5) / 8) * 100), 0, 100);
+function dayKeyISO(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function dayLabelBR(iso: string) {
+  const [, m, d] = iso.split("-");
+  return `${d}/${m}`;
+}
+
+function labelToText(label: LabelABCD) {
+  if (label === "A") return "Confiável";
+  if (label === "B") return "Neutro";
+  if (label === "C") return "Sensacionalista";
+  return "Desinformação";
+}
+
+function labelToColorKey(label: LabelABCD): "good" | "neutral" | "warn" | "bad" {
+  if (label === "A") return "good";
+  if (label === "B") return "neutral";
+  if (label === "C") return "warn";
+  return "bad";
 }
 
 function statusFromScore(score: number): DashboardData["statusLabel"] {
   if (score >= 70) return "Saudável";
   if (score >= 40) return "Atenção";
-  if (score > 0) return "Iniciante";
+  if (score > 0) return "Crítico";
   return "Iniciante";
 }
 
-function hintFromScore(score: number) {
-  if (score >= 70) return "Você está consumindo majoritariamente fontes equilibradas.";
-  if (score >= 40) return "Seu consumo está misto — tente priorizar fontes mais confiáveis.";
-  if (score > 0) return "Bom começo! Continue analisando URLs para melhorar seu padrão informacional.";
-  return "Comece analisando uma URL para gerar seu primeiro score.";
+function statusHint(label: DashboardData["statusLabel"]) {
+  if (label === "Saudável") return "Você está consumindo majoritariamente fontes equilibradas.";
+  if (label === "Atenção") return "Seu consumo está oscilando. Prefira fontes confiáveis e neutras.";
+  if (label === "Crítico") return "Alerta: muitas visitas a fontes de baixa confiabilidade no consumo.";
+  return "Faça sua primeira análise para ver sua evolução.";
 }
 
-function dayKey(d: Date) {
-  const map = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-  return map[d.getDay()];
+// Estilo demo: frase curta, “redutivo” e com tom produto
+function buildInsight(dist: Record<LabelABCD, number>, total: number) {
+  if (!total) return "Comece analisando algumas URLs para gerar seu perfil informacional.";
+
+  const pct = (k: LabelABCD) => Math.round((dist[k] / total) * 100);
+
+  const c = pct("C");
+  const d = pct("D");
+  const a = pct("A");
+  const b = pct("B");
+
+  if (a + b >= 70) return "Seu padrão informacional está mais estável e consciente.";
+  if (d >= 15)
+    return "Há sinais de risco: presença relevante de fontes de desinformação. Foque em fontes confiáveis/neutras por alguns dias.";
+  if (c >= 25)
+    return "Você tem consumido bastante conteúdo sensacionalista. Reduzir isso tende a melhorar o equilíbrio do seu score.";
+  return "Seu consumo está misto. Priorize fontes confiáveis e neutras para estabilizar o score.";
 }
 
 export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "Lumen"): DashboardData {
-  const ordered = [...items].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
-  const last20 = ordered.slice(-20);
+  const sorted = [...(items || [])].sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+  const last = sorted[sorted.length - 1];
 
-  const ps = last20.map((it) => pesos[catToLabel(it)]);
-  const score = scoreFromPesos(ps);
+  const scoreNow = last?.score ?? 0;
+  const statusLabel = statusFromScore(scoreNow);
 
-  const xp = clamp(last20.length * 2 + ps.filter((p) => p > 0).length, 0, 9999);
+  // XP (demo-like): cresce com volume + score
+  const xp = clamp(Math.round((sorted.length / 35) * 55 + (scoreNow / 100) * 45), 0, 100);
 
-  const counts = { A: 0, B: 0, C: 0, D: 0 };
-  for (const it of last20) counts[catToLabel(it)]++;
-
-  const total = Math.max(1, last20.length);
-  const distribution: DashboardData["distribution"] = [
-    { label: "Confiável", value: Math.round((counts.A / total) * 100), colorKey: "good" },
-    { label: "Neutro", value: Math.round((counts.B / total) * 100), colorKey: "neutral" },
-    { label: "Sensacionalista", value: Math.round((counts.C / total) * 100), colorKey: "warn" },
-    { label: "Desinformação", value: Math.round((counts.D / total) * 100), colorKey: "bad" },
-  ];
-
-  const now = new Date();
-  const days: Date[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    d.setHours(0, 0, 0, 0);
-    days.push(d);
+  // série diária (média do dia)
+  const byDay = new Map<string, { sum: number; count: number }>();
+  for (const it of sorted) {
+    const k = dayKeyISO(new Date(it.createdAt));
+    const cur = byDay.get(k) || { sum: 0, count: 0 };
+    cur.sum += Number(it.score ?? 0);
+    cur.count += 1;
+    byDay.set(k, cur);
   }
+  const dayKeys = Array.from(byDay.keys()).sort();
 
-  const scoreSeries = days.map((d) => {
-    const start = new Date(d).getTime();
-    const end = new Date(d); end.setHours(23, 59, 59, 999);
-
-    const daily = ordered.filter((it) => {
-      const t = new Date(it.createdAt).getTime();
-      return t >= start && t <= end.getTime();
-    });
-
-    const dailyPs = daily.slice(-20).map((it) => pesos[catToLabel(it)]);
-    const value = dailyPs.length ? scoreFromPesos(dailyPs) : 0;
-
-    return { day: dayKey(d), value };
+  const scoreSeries = dayKeys.map((k) => {
+    const v = byDay.get(k)!;
+    return { day: dayLabelBR(k), value: Math.round(v.sum / v.count) };
   });
 
-  const weeklySeries = scoreSeries;
+  // ✅ weeklySeries (últimos 7 dias) SEM inventar valores:
+  // dia sem dado = null
+  const weeklySeries: { day: string; value: number | null }[] = [];
+  if (dayKeys.length) {
+    const lastDate = new Date(dayKeys[dayKeys.length - 1] + "T00:00:00");
 
-  const lastAccess = [...items]
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    .slice(0, 5)
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(lastDate);
+      d.setDate(lastDate.getDate() - i);
+      const key = dayKeyISO(d);
+
+      const entry = byDay.get(key);
+      weeklySeries.push({
+        day: dayLabelBR(key),
+        value: entry ? Math.round(entry.sum / entry.count) : null,
+      });
+    }
+  }
+
+  // Distribuição A/B/C/D
+  const dist: Record<LabelABCD, number> = { A: 0, B: 0, C: 0, D: 0 };
+  for (const it of sorted) dist[normalizeLabel(it) as LabelABCD]++;
+
+  const total = sorted.length || 1;
+
+  // ✅ igual demo: label é TEXTO
+  const distribution = (["A", "B", "C", "D"] as LabelABCD[]).map((l) => ({
+    label: labelToText(l),
+    value: Math.round((dist[l] / total) * 100),
+    colorKey: labelToColorKey(l),
+  }));
+
+  // Tendência demo-like (ignora dias null)
+  const vals = weeklySeries.map((x) => x.value).filter((v): v is number => typeof v === "number");
+  const lastWeekAvg = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+
+  const trend =
+    lastWeekAvg == null
+      ? { title: "Tendência", subtitle: "Sem dados suficientes" }
+      : lastWeekAvg >= 70
+      ? { title: "Tendência", subtitle: "↗ Consumo mais crítico e equilibrado" }
+      : lastWeekAvg >= 40
+      ? { title: "Tendência", subtitle: "↗ Consumo em ajuste" }
+      : { title: "Tendência", subtitle: "↘ Consumo mais crítico" };
+
+  // ✅ Últimos acessos igual demo: só 5 itens
+  const lastAccess = [...sorted]
+    .slice(-5)
+    .reverse()
     .map((it) => ({
       id: it.id,
       url: it.url,
-      title: it.domain || it.url,
-      label: catToLabel(it),
+      label: normalizeLabel(it) as any,
+      title: "",
     }));
-
-  const statusLabel = statusFromScore(score);
-  const statusHint = hintFromScore(score);
-
-  const trend = {
-    title: "Tendência",
-    subtitle: score >= 70 ? "Consumo mais crítico e equilibrado" : score >= 40 ? "Oscilando — ajuste suas fontes" : "Construindo hábito informacional",
-  };
-
-  const insight =
-    score >= 70
-      ? "Seu padrão informacional está mais estável e consciente."
-      : score >= 40
-      ? "Você pode ganhar estabilidade priorizando fontes confiáveis e checadas."
-      : "Bem-vindo(a)! Assim que você analisar sites, o Lumen vai montar seus gráficos.";
 
   return {
     mascot: { name: mascotName },
-    score,
+
+    score: scoreNow,
     statusLabel,
-    statusHint,
+    statusHint: statusHint(statusLabel),
+
     xp,
+
     scoreSeries,
-    weeklySeries,
+    weeklySeries: weeklySeries as any, // 👈 se seu type ainda for number, ajuste types.ts (veja abaixo)
+
     distribution,
+
     trend,
-    insight,
+    insight: buildInsight(dist, sorted.length),
+
     lastAccess,
   };
 }

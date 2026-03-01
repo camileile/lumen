@@ -1,21 +1,51 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-  <link rel="stylesheet" href="popup.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lumen</title>
+  <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <div class="container">
-    <h2>Lumen</h2>
+    <header class="header">
+      <div class="brand">
+        <div class="dot"></div>
+        <h2>Lumen</h2>
+      </div>
+      <div id="estado" class="estado">Carregando...</div>
+    </header>
 
-    <div id="estado" class="estado">Carregando...</div>
-    <div id="score" class="score"></div>
-    <div id="mode" class="muted"></div>
-    <div id="domain" class="muted"></div>
+    <section class="card">
+      <div class="scoreRow">
+        <div>
+          <div class="label">Score</div>
+          <div id="score" class="score">—</div>
+        </div>
 
-    <img id="lume" src="lume-verde.gif" />
+        <img id="lume" class="lume" src="lume-verde.gif" alt="Lume" />
+      </div>
 
-    <button id="toggleOverlay" class="toggle-btn">Carregando...</button>
-    <button id="reanalyze" class="toggle-btn secondary">Reanalisar agora</button>
+      <div class="meta">
+        <div class="metaItem">
+          <span class="metaKey">Modo</span>
+          <span id="mode" class="metaVal muted">—</span>
+        </div>
+        <div class="metaItem">
+          <span class="metaKey">Domínio</span>
+          <span id="domain" class="metaVal muted">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button id="toggleOverlay" class="btn">Carregando...</button>
+      <button id="reanalyze" class="btn secondary">Reanalisar agora</button>
+    </section>
+
+    <div class="footer muted">
+      <span id="hint">Dica: passe o mouse no Lume na página.</span>
+    </div>
   </div>
 
   <script src="popup.js"></script>

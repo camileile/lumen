@@ -735,3 +735,34 @@
   background: rgba(120,255,160,0.15);
   border-color: rgba(120,255,160,0.4);
 }
+
+/* ===== URL com scroll horizontal (lista continua vertical) ===== */
+
+/* garante que a coluna do texto pode encolher */
+.historyText{
+  min-width: 0;
+}
+
+/* a URL vira uma “faixa” rolável pro lado */
+.historyUrl{
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;      /* ✅ rola pro lado */
+  overflow-y: hidden;
+  white-space: nowrap;   /* ✅ não quebra linha */
+  text-overflow: clip;   /* não usa ... */
+  padding-bottom: 4px;   /* espaço pro scrollbar */
+}
+
+/* scrollbar horizontal só da URL */
+.historyUrl::-webkit-scrollbar{
+  height: 6px;
+}
+.historyUrl::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.14);
+  border-radius: 999px;
+}
+.historyUrl::-webkit-scrollbar-track{
+  background: rgba(255,255,255,.06);
+  border-radius: 999px;
+}

@@ -2,27 +2,42 @@ import "dotenv/config";
 
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 
+export type ORCategory = "A" | "B" | "C" | "D";
+
 export type ORResult = {
-  category: "confiavel" | "neutro" | "sensacionalista" | "desinformacao" | "desconhecido";
+  category: ORCategory; // A/B/C/D
   score: number; // 0..100
   summary: string;
   modelUsed?: string;
 };
 
 function tryParseJson(text: string) {
-  try { return JSON.parse(text); } catch {}
+  try {
+    return JSON.parse(text);
+  } catch {}
   const m = text.match(/\{[\s\S]*\}/);
-  if (m) { try { return JSON.parse(m[0]); } catch {} }
+  if (m) {
+    try {
+      return JSON.parse(m[0]);
+    } catch {}
+  }
   return null;
 }
 
-const allowed = new Set(["confiavel", "neutro", "sensacionalista", "desinformacao", "desconhecido"]);
+const allowedABCD = new Set<ORCategory>(["A", "B", "C", "D"]);
 
-// ✅ escolha 1: um modelo específico free (ex.: DeepSeek R1 free, ou DeepSeek chat free, etc.)
-// ✅ escolha 2: usar o Free Models Router (recomendado porque muda ao longo do tempo)
-// docs: :free suffix e Free Models Router :contentReference[oaicite:2]{index=2}
-const DEFAULT_MODEL = "openrouter/free"; // Free Models Router
-// alternativa: "deepseek/deepseek-r1:free" ou "deepseek/deepseek-chat-v3-0324:free" (depende do que estiver disponível)
+// compat: se vier o formato antigo
+function mapLegacyCategory(cat: string): ORCategory {
+  const c = cat.toLowerCase().trim();
+  if (c === "confiavel") return "A";
+  if (c === "neutro" || c === "desconhecido") return "B";
+  if (c === "sensacionalista") return "C";
+  if (c === "desinformacao") return "D";
+  return "B";
+}
+
+// Free Models Router (muda ao longo do tempo)
+const DEFAULT_MODEL = "openrouter/free";
 
 export async function openrouterAnalyze(input: { url: string; domain: string }): Promise<ORResult> {
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
@@ -33,7 +48,18 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
     {
       role: "system",
       content:
-        'Você é um classificador de confiabilidade de fonte para o Lumen. Responda APENAS JSON válido: {"category":"confiavel|neutro|sensacionalista|desinformacao|desconhecido","score":0-100,"summary":"resumo curto"}',
+        [
+          "Você é o classificador de confiabilidade do Lumen.",
+          'Responda APENAS JSON válido, sem texto extra, no formato:',
+          '{"category":"A|B|C|D","score":0-100,"summary":"resumo curto (1-2 frases)"}',
+          "",
+          "Regras:",
+          "- A = fonte confiável / jornalismo de referência / órgão reconhecido",
+          "- B = neutra / institucional / desconhecida sem sinais fortes",
+          "- C = sensacionalista / clickbait / baixa qualidade editorial",
+          "- D = desinformação / histórico forte de fake news",
+          "- score deve refletir category (A alto, D baixo).",
+        ].join("\n"),
     },
     { role: "user", content: JSON.stringify(input) },
   ];
@@ -43,7 +69,6 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
     "Content-Type": "application/json",
   };
 
-  // headers opcionais (ranking / analytics)
   if (process.env.OPENROUTER_SITE_URL) headers["HTTP-Referer"] = process.env.OPENROUTER_SITE_URL;
   if (process.env.OPENROUTER_APP_NAME) headers["X-Title"] = process.env.OPENROUTER_APP_NAME;
 
@@ -58,26 +83,36 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
       model: DEFAULT_MODEL,
       messages,
       temperature: 0.2,
-      max_tokens: 250,
+      max_tokens: 220,
+      // opcional: ajuda a “forçar” JSON em alguns modelos compatíveis
+      response_format: { type: "json_object" },
     }),
   }).finally(() => clearTimeout(timer));
 
   const data = await res.json().catch(() => ({} as any));
   if (!res.ok) {
-    throw new Error(data?.error?.message ?? `OpenRouter HTTP ${res.status}`);
+    const msg = data?.error?.message ?? `OpenRouter HTTP ${res.status}`;
+    throw new Error(`OPENROUTER_ERROR: ${msg}`);
   }
 
   const content: string = data?.choices?.[0]?.message?.content ?? "{}";
   const parsed = tryParseJson(content) ?? {};
 
-  const category = String(parsed.category ?? "desconhecido");
-  const score = Number(parsed.score ?? 50);
+  // aceita A/B/C/D ou legacy e mapeia
+  const rawCat = String(parsed.category ?? "B").trim();
+  const category: ORCategory = allowedABCD.has(rawCat as ORCategory)
+    ? (rawCat as ORCategory)
+    : mapLegacyCategory(rawCat);
+
+  const scoreNum = Number(parsed.score ?? 50);
+  const score = Number.isFinite(scoreNum) ? Math.max(0, Math.min(100, Math.round(scoreNum))) : 50;
+
   const summary = String(parsed.summary ?? "").slice(0, 500) || "Sem resumo.";
 
   return {
-    category: allowed.has(category) ? (category as any) : "desconhecido",
-    score: Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 50,
+    category,
+    score,
     summary,
-    modelUsed: data?.model, // geralmente vem preenchido
+    modelUsed: data?.model,
   };
 }

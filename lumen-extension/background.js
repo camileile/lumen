@@ -55,7 +55,7 @@ async function sendOverlayUpdateToTab(tabId, payload) {
 }
 
 /**
- * ✅ Atualiza score/ícone/overlay SEMPRE localmente
+ * ✅ Atualiza score/ícone/overlay SEMPRE localmente (instantâneo)
  */
 async function analyzeLocal(url) {
   const label = classificarLocal(url); // A/B/C/D
@@ -79,7 +79,7 @@ async function analyzeLocal(url) {
   return {
     mode: "local",
     score,
-    category: label, // A/B/C/D (pra UI da extensão)
+    category: label, // A/B/C/D
     summary,
     domain: normalizeDomain(url),
     historico: next,
@@ -87,29 +87,52 @@ async function analyzeLocal(url) {
 }
 
 /**
- * ✅ Envia pro backend (somente pra SALVAR NO BANCO pro dashboard)
- * Não interfere em ícone/overlay/score local.
+ * ✅ Chama backend e DEVOLVE a análise final (IA ou fallback do backend)
+ * Também serve pra salvar no banco pro dashboard, já que o controller salva.
  */
-async function sendToBackend(url) {
+async function analyzeRemote(url) {
   const { lumen_token } = await chrome.storage.local.get(["lumen_token"]);
-  if (!lumen_token) return;
+  if (!lumen_token) throw new Error("Sem token");
 
-  try {
-    const res = await fetch(`${API_URL}/analyze`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${lumen_token}`,
-      },
-      body: JSON.stringify({ url }),
-    });
+  const res = await fetch(`${API_URL}/analyze`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${lumen_token}`,
+    },
+    body: JSON.stringify({ url }),
+  });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      console.warn("Lumen backend /analyze falhou:", data?.error || res.status);
-    }
-  } catch (e) {
-    console.warn("Lumen backend offline/erro:", String(e));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+
+  const a = data?.analysis || data?.analysis?.analysis || data?.analysis;
+  // normalmente: { analysis: { url, domain, category, score, summary, ... }, mode, modelUsed }
+
+  if (!a || typeof a.score !== "number" || !a.category) {
+    throw new Error("Resposta do backend inválida");
+  }
+
+  return {
+    mode: data?.mode || "ai", // "ai" | "local-fallback"
+    score: a.score,
+    category: a.category, // "A/B/C/D"
+    summary: a.summary,
+    domain: a.domain,
+    modelUsed: data?.modelUsed,
+  };
+}
+
+async function applyPayloadToUI(tabId, payload, overlayAtivo) {
+  await chrome.storage.local.set(payload);
+  await setIconByScore(payload.score);
+
+  if (overlayAtivo) {
+    await sendOverlayUpdateToTab(tabId, payload);
+  } else {
+    await sendOverlayUpdateToTab(tabId, { overlayAtivo: false });
   }
 }
 
@@ -122,31 +145,47 @@ async function processUrlForTab(tabId, url) {
 
   const { overlayAtivo = true } = await chrome.storage.local.get(["overlayAtivo"]);
 
-  // 1) SEMPRE atualiza local (UX instantânea)
-  const result = await analyzeLocal(url);
+  // 1) LOCAL (instantâneo)
+  const local = await analyzeLocal(url);
 
-  const payload = {
-    score: result.score,
-    category: result.category, // A/B/C/D
-    summary: result.summary,
-    domain: result.domain,
-    historico: result.historico,
+  let payload = {
+    score: local.score,
+    category: local.category,
+    summary: local.summary,
+    domain: local.domain,
+    historico: local.historico,
     lastUrl: url,
-    lastMode: result.mode,
+    lastMode: local.mode, // "local"
     lastUpdatedAt: Date.now(),
   };
 
-  await chrome.storage.local.set(payload);
-  await setIconByScore(result.score);
+  await applyPayloadToUI(tabId, payload, overlayAtivo);
 
-  if (overlayAtivo) {
-    await sendOverlayUpdateToTab(tabId, payload);
-  } else {
-    await sendOverlayUpdateToTab(tabId, { overlayAtivo: false });
+  // 2) REMOTO (final) -> se der certo, sobrescreve score/category/summary/mode
+  try {
+    const remote = await analyzeRemote(url);
+
+    // evita race condition: se o usuário já mudou de site enquanto a IA respondia,
+    // não atualiza com resultado velho
+    const { lastUrl: currentLastUrl } = await chrome.storage.local.get(["lastUrl"]);
+    if (currentLastUrl && currentLastUrl !== url) return;
+
+    payload = {
+      ...payload,
+      score: remote.score,
+      category: remote.category,
+      summary: remote.summary,
+      domain: remote.domain,
+      lastMode: remote.mode, // "ai" | "local-fallback"
+      lastUpdatedAt: Date.now(),
+      modelUsed: remote.modelUsed,
+    };
+
+    await applyPayloadToUI(tabId, payload, overlayAtivo);
+  } catch (e) {
+    // backend offline/sem token/erro IA -> mantém local
+    console.warn("Remote analyze falhou, mantendo local:", String(e));
   }
-
-  // 2) Em paralelo, registra no backend (dashboard)
-  sendToBackend(url);
 }
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {

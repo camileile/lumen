@@ -10,6 +10,7 @@ import type { DashboardData } from "../lib/types";
 
 import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth";
 import { ChevronRight, X, User, Download, Settings, Trophy, Pencil } from "lucide-react";
+
 import {
   ResponsiveContainer,
   LineChart,
@@ -30,9 +31,10 @@ type TourStep = {
 
 const TOUR_KEY = "lumen_dashboard_tour_done_v1";
 const NAME_KEY = "lumen_user_name_v1";
+const HAS_DATA_KEY = "lumen_has_data_v1";
+const DEMO_KEY = "lumen_demo_v1";
 
-function mascotByScore(score: number, firstTime: boolean, demo: boolean) {
-  if (demo) return "/lume-verde.gif";
+function mascotByScore(score: number, firstTime: boolean) {
   if (firstTime) return "/lume-amarelo.gif";
   if (score >= 70) return "/lume-verde.gif";
   if (score >= 40) return "/lume-amarelo.gif";
@@ -49,9 +51,10 @@ function ScoreLine({
   data,
   showAxis = false,
 }: {
-  data: { day: string; value: number }[];
+  data: { day: string; value: number | null }[];
   showAxis?: boolean;
 }) {
+  // Recharts: null não desenha a linha nesse ponto (fica com buracos, o que é certo)
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -82,6 +85,7 @@ function ScoreLine({
             stroke="#78ffa0"
             strokeWidth={3}
             dot={false}
+            connectNulls={false}    /* ✅ não inventa linha */
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
         </LineChart>
@@ -90,11 +94,14 @@ function ScoreLine({
   );
 }
 
-function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
+function WeeklyBars({ data }: { data: { day: string; value: number | null }[] }) {
+  // barra não lida bem com null → converte null pra 0 só pra visual
+  const safe = data.map((d) => ({ ...d, value: d.value ?? 0 }));
+
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 5, left: 5, bottom: 25 }}>
+        <BarChart data={safe} margin={{ top: 10, right: 5, left: 5, bottom: 25 }}>
           <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
           <XAxis
             dataKey="day"
@@ -122,8 +129,19 @@ function WeeklyBars({ data }: { data: { day: string; value: number }[] }) {
 
 export default function DashboardPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
+
+  // Demo persistente + inteligente:
+  // - se user já salvou demo: usa o valor
+  // - se não salvou: se tem token, começa OFF (real); se não tem, ON
+  const [demo, setDemo] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem(DEMO_KEY);
+    if (saved === "0") return false;
+    if (saved === "1") return true;
+    return !getToken();
+  });
+
   const [firstTime, setFirstTime] = useState(true);
-  const [demo, setDemo] = useState(true);
 
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loadingDash, setLoadingDash] = useState(false);
@@ -145,9 +163,9 @@ export default function DashboardPage() {
       });
   }, []);
 
-  // firstTime: mantém compatibilidade com sua flag local
+  // firstTime: compat com sua flag local
   useEffect(() => {
-    const done = localStorage.getItem("lumen_has_data_v1");
+    const done = localStorage.getItem(HAS_DATA_KEY);
     setFirstTime(!done);
   }, []);
 
@@ -159,7 +177,7 @@ export default function DashboardPage() {
       const { items } = await getHistory();
 
       const hasData = !!items?.length;
-      localStorage.setItem("lumen_has_data_v1", hasData ? "1" : "");
+      localStorage.setItem(HAS_DATA_KEY, hasData ? "1" : "");
       setFirstTime(!hasData);
 
       if (!hasData) {
@@ -177,7 +195,7 @@ export default function DashboardPage() {
     }
   }
 
-  // Quando desliga demo, carrega do backend
+  // Quando demo OFF, carrega do backend
   useEffect(() => {
     if (demo) return;
     const token = getToken();
@@ -197,7 +215,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem(NAME_KEY);
-    const initial = (saved && saved.trim()) || user?.name || (data?.mascot?.name ? data.mascot.name : "Lumen");
+    const initial =
+      (saved && saved.trim()) ||
+      user?.name ||
+      (data?.mascot?.name ? data.mascot.name : "Lumen");
     setName(initial);
     setDraftName(initial);
   }, [data?.mascot?.name, user?.name]);
@@ -233,14 +254,14 @@ export default function DashboardPage() {
     {
       id: "s2",
       anchor: "distribution",
-      title: "Distribuição de fontes",
-      text: "Este gráfico mostra o tipo de conteúdo mais frequente: confiável, neutro, sensacionalista e desinformação.",
+      title: "Distribuição A/B/C/D",
+      text: "Este gráfico mostra a frequência das categorias: A (confiável), B (neutra), C (sensacionalista), D (desinformação).",
     },
     {
       id: "s3",
       anchor: "history",
       title: "Últimos acessos",
-      text: "Seu histórico recente aparece aqui. Agora vem do banco via API do backend (quando Demo OFF).",
+      text: "Seu histórico recente aparece aqui. Quando Demo OFF, vem do banco via API do backend.",
     },
     {
       id: "s4",
@@ -278,7 +299,18 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button type="button" onClick={() => setDemo((d) => !d)} className={styles.demoBtn}>
+          <button
+            type="button"
+            onClick={() => {
+              setDemo((d) => {
+                const next = !d;
+                localStorage.setItem(DEMO_KEY, next ? "1" : "0");
+                return next;
+              });
+            }}
+            className={styles.demoBtn}
+            title="Demo usa dados mock. OFF usa backend."
+          >
             {demo ? "Modo Demo ON" : "Modo Demo OFF"}
           </button>
 
@@ -345,7 +377,13 @@ export default function DashboardPage() {
                     if (e.key === "Escape") cancelEditName();
                   }}
                 />
-                <button className={styles.iconBtn} type="button" onClick={() => saveName()} aria-label="Salvar nome" title="Salvar">
+                <button
+                  className={styles.iconBtn}
+                  type="button"
+                  onClick={() => saveName()}
+                  aria-label="Salvar nome"
+                  title="Salvar"
+                >
                   OK
                 </button>
               </>
@@ -353,10 +391,17 @@ export default function DashboardPage() {
           </div>
 
           <div className={styles.avatarBox}>
-            <img src={mascotByScore(data.score, firstTime, demo)} alt="Lumen" className={styles.avatarImg} />
+            <img
+              src={mascotByScore(data.score, firstTime)}
+              alt="Lumen"
+              className={styles.avatarImg}
+            />
           </div>
 
-          <div className={styles.badge}>{data.statusLabel}</div>
+          <div className={styles.badge}>
+            {data.statusLabel}
+            {demo ? " • DEMO" : ""}
+          </div>
 
           <div className={styles.xpWrap}>
             <div className={styles.xpTop}>
@@ -429,6 +474,7 @@ export default function DashboardPage() {
 
         <section className={`${styles.card} ${styles.smallCard}`} data-anchor="distribution">
           <h3>Distribuição</h3>
+
           {data.distribution.length === 0 ? (
             <div className={styles.placeholderBox}>
               <strong>Sem dados de distribuição</strong>
@@ -478,6 +524,7 @@ export default function DashboardPage() {
 
         <section className={`${styles.card} ${styles.historyCard}`} data-anchor="history">
           <h3>Últimos acessos</h3>
+
           <div className={styles.historyList}>
             {data.lastAccess.length === 0 ? (
               <div className={styles.emptyBox}>
@@ -485,12 +532,14 @@ export default function DashboardPage() {
                 <p>Assim que você analisar sites, o Lumen vai registrar seu histórico aqui.</p>
               </div>
             ) : (
-              data.lastAccess.map((a) => (
+              data.lastAccess.map((a: any) => (
                 <div key={a.id} className={styles.historyItem}>
                   <div className={`${styles.letter} ${styles["letter_" + a.label]}`}>{a.label}</div>
-                  <div className={styles.historyText}>
-                    <div className={styles.historyUrl}>{a.url}</div>
-                  </div>
+
+                 <div className={styles.historyText}>
+  <div className={styles.historyUrl}>{a.url}</div>
+</div>
+
                   <button className={styles.smallBtn} type="button">
                     Verificar fonte
                   </button>
@@ -529,12 +578,15 @@ export default function DashboardPage() {
             <button className={styles.tourClose} onClick={finishTour} aria-label="Fechar">
               <X size={18} />
             </button>
+
             <div className={styles.tourTitle}>{current.title}</div>
             <div className={styles.tourText}>{current.text}</div>
+
             <div className={styles.tourFooter}>
               <span className={styles.tourSteps}>
                 {step + 1} / {steps.length}
               </span>
+
               <div className={styles.tourBtns}>
                 <button
                   className={styles.tourGhost}
@@ -544,8 +596,13 @@ export default function DashboardPage() {
                 >
                   Voltar
                 </button>
+
                 {step < steps.length - 1 ? (
-                  <button className={styles.tourPrimary} type="button" onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}>
+                  <button
+                    className={styles.tourPrimary}
+                    type="button"
+                    onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
+                  >
                     Próximo
                   </button>
                 ) : (

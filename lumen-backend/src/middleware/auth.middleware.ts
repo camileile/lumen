@@ -1,34 +1,27 @@
-import type { NextFunction, Request, Response } from "express";
+// src/middleware/auth.middleware.ts
+import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 export type AuthedRequest = Request & { userId?: string };
 
 export function authMiddleware(req: AuthedRequest, res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-
-  // Se aparecer "ERRO_LUMEN_01", sabemos que o servidor atualizou!
-  if (!header || !header.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "ERRO_LUMEN_01: Token ausente" });
-  }
-
-  const token = header.split(" ")[1];
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    return res.status(500).json({ error: "ERRO_LUMEN_SECRET: Chave não configurada" });
-  }
-
   try {
-    const payload = jwt.verify(token, secret) as { userId: string };
+    const header = req.headers.authorization || "";
+    const [type, token] = header.split(" ");
 
-    if (!payload.userId) {
-      return res.status(401).json({ error: "ERRO_LUMEN_02: Payload inválido" });
+    if (type !== "Bearer" || !token) {
+      return res.status(401).json({ error: "Token ausente ou inválido" });
     }
 
-    req.userId = payload.userId;
+    const secret = process.env.JWT_SECRET;
+    if (!secret) return res.status(500).json({ error: "JWT_SECRET não configurado" });
+
+    const decoded = jwt.verify(token, secret) as { userId?: string };
+    if (!decoded.userId) return res.status(401).json({ error: "Token inválido (sem userId)" });
+
+    req.userId = decoded.userId;
     return next();
-  } catch (error: any) {
-    console.error("Erro JWT Detalhado:", error.message);
-    return res.status(401).json({ error: "ERRO_LUMEN_03: Token expirado ou malformado" });
+  } catch {
+    return res.status(401).json({ error: "Token inválido ou expirado" });
   }
 }
