@@ -9,6 +9,8 @@ const neutros = ["gov.br", "un.org", "who.int", "ibge.gov.br"];
 const sensacionalistas = ["metropoles.com", "r7.com", "terra.com.br"];
 const desinformacao = ["infowars.com", "naturalnews.com"];
 
+const pesos: Record<"A" | "B" | "C" | "D", number> = { A: 3, B: 1, C: -2, D: -5 };
+
 function normalizeDomain(host: string) {
   return host.replace(/^www\./, "");
 }
@@ -22,23 +24,48 @@ function classificarABCD(domain: string): "A" | "B" | "C" | "D" {
   return "B";
 }
 
-// fallback simples (sem histórico) mas com A/B/C/D igual à extensão
-function fallbackLocalABCD(domain: string) {
-  const label = classificarABCD(domain);
+function scoreFromHistorico(historico: number[]) {
+  const soma = historico.reduce((a, b) => a + b, 0);
+  const media = soma / historico.length;
+  let score = Math.round(((media + 5) / 8) * 100);
+  score = Math.max(0, Math.min(100, score));
+  return score;
+}
 
-  const summary =
+function summaryByLabel(label: "A" | "B" | "C" | "D", source: "ai" | "local") {
+  const base =
     label === "A"
-      ? "Fonte com histórico mais confiável (fallback local)."
+      ? "Fonte com histórico mais confiável"
       : label === "B"
-      ? "Fonte neutra / institucional (fallback local)."
+      ? "Fonte neutra / institucional"
       : label === "C"
-      ? "Fonte com tendência sensacionalista (fallback local)."
-      : "Fonte associada a desinformação (fallback local).";
+      ? "Fonte com tendência sensacionalista"
+      : "Fonte associada a desinformação";
 
-  // score “compatível” (pode ser ajustado depois)
-  const score = label === "A" ? 85 : label === "B" ? 60 : label === "C" ? 35 : 10;
+  return `${base} (${source === "ai" ? "IA" : "lista local"}).`;
+}
 
-  return { category: label, score, summary };
+async function computeGlobalScoreForUser(userId: string, currentLabel: "A" | "B" | "C" | "D") {
+  // pega as últimas 19 análises (porque a atual ainda não foi salva)
+  const last = await prisma.analysis.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: 19,
+    select: { category: true }, // category guarda A/B/C/D
+  });
+
+  const hist = last
+    .map((x) => String(x.category) as "A" | "B" | "C" | "D")
+    .filter((c): c is "A" | "B" | "C" | "D" => c === "A" || c === "B" || c === "C" || c === "D")
+    .map((c) => pesos[c]);
+
+  // adiciona o peso do conteúdo atual e corta pra 20
+  const next = [pesos[currentLabel], ...hist].slice(0, 20);
+
+  return {
+    historicoPesos: next,
+    scoreGlobal: scoreFromHistorico(next),
+  };
 }
 
 export async function analyzeController(req: AuthedRequest, res: Response) {
@@ -54,43 +81,47 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
       return res.status(400).json({ error: "URL inválida" });
     }
 
+    // 1) Categoria: tenta IA, senão fallback local (mas SEMPRE em A/B/C/D)
     let category: "A" | "B" | "C" | "D" = "B";
-    let score = 50;
     let summary = "Sem resumo.";
     let mode: "ai" | "local-fallback" = "ai";
     let modelUsed: string | undefined;
 
     try {
-      // 🔥 IMPORTANT: openrouterAnalyze precisa devolver category "A/B/C/D" também
       const ai = await openrouterAnalyze({ url, domain: normalizeDomain(domain) });
-      category = ai.category;         // "A" | "B" | "C" | "D"
-      score = Math.round(ai.score);   // 0-100
-      summary = ai.summary;
+      category = ai.category; // precisa ser A/B/C/D
+      summary = ai.summary || summaryByLabel(category, "ai");
       modelUsed = ai.modelUsed;
       mode = "ai";
     } catch (e: any) {
+      category = classificarABCD(domain);
       const msg = String(e?.message || e);
-      const fb = fallbackLocalABCD(domain);
-      category = fb.category;
-      score = fb.score;
-      summary = `${fb.summary} (IA indisponível: ${msg.slice(0, 80)})`;
+      summary = `${summaryByLabel(category, "local")} (IA indisponível: ${msg.slice(0, 80)})`;
       modelUsed = "fallback-local";
       mode = "local-fallback";
     }
 
+    // 2) Score GLOBAL (igual extensão): média móvel dos últimos 20 pesos do usuário
+    const { scoreGlobal } = await computeGlobalScoreForUser(req.userId, category);
+
+    // 3) Salva no banco com score GLOBAL
     const analysis = await prisma.analysis.create({
       data: {
         url,
         domain: normalizeDomain(domain),
-        category,      // agora salva "A/B/C/D"
-        score,
+        category,          // A/B/C/D
+        score: scoreGlobal, // ✅ score global/comportamental
         summary,
         text: summary,
         userId: req.userId,
       },
     });
 
-    return res.json({ analysis, modelUsed: modelUsed ?? "unknown", mode });
+    return res.json({
+      analysis,
+      modelUsed: modelUsed ?? "unknown",
+      mode,
+    });
   } catch (e: any) {
     console.error("analyzeController:", e?.stack || e);
     return res.status(500).json({ error: e?.message || "Erro ao analisar" });

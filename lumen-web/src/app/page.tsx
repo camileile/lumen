@@ -32,7 +32,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* COMO FUNCIONA (igual ao print) */}
+     
       <section id="como-funciona" className={styles.sectionCentered}>
         <h2 className={styles.sectionTitleCentered}>Como o Lumen Funciona</h2>
 
