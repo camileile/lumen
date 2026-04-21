@@ -4,7 +4,6 @@ import { authMiddleware } from "../middleware/auth.middleware";
 
 const router = Router();
 
-// ✅ com auth
 router.get("/", authMiddleware, getHistory);
 
 export default router;

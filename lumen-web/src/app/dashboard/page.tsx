@@ -5,7 +5,6 @@ import styles from "./dashboard.module.css";
 
 import { getDashboardMock } from "../lib/dashboardMock";
 import { getHistory } from "../lib/history";
-import { buildDashboardFromHistory } from "../lib/dashboard";
 import type { DashboardData } from "../lib/types";
 
 import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth";
@@ -47,6 +46,13 @@ function xpText(xp: number) {
   return "Primeiros passos!";
 }
 
+function mapStatusLabel(status: string): "Iniciante" | "Saudável" | "Atenção" | "Crítico" {
+  if (status === "Saudável") return "Saudável";
+  if (status === "Atenção") return "Atenção";
+  if (status === "Alerta") return "Crítico";
+  return "Iniciante";
+}
+
 function ScoreLine({
   data,
   showAxis = false,
@@ -54,7 +60,6 @@ function ScoreLine({
   data: { day: string; value: number | null }[];
   showAxis?: boolean;
 }) {
-  // Recharts: null não desenha a linha nesse ponto (fica com buracos, o que é certo)
   return (
     <div style={{ height: "100%", width: "100%" }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -85,7 +90,7 @@ function ScoreLine({
             stroke="#78ffa0"
             strokeWidth={3}
             dot={false}
-            connectNulls={false}    /* ✅ não inventa linha */
+            connectNulls={false}
             activeDot={{ r: 4, strokeWidth: 0 }}
           />
         </LineChart>
@@ -95,7 +100,6 @@ function ScoreLine({
 }
 
 function WeeklyBars({ data }: { data: { day: string; value: number | null }[] }) {
-  // barra não lida bem com null → converte null pra 0 só pra visual
   const safe = data.map((d) => ({ ...d, value: d.value ?? 0 }));
 
   return (
@@ -130,16 +134,22 @@ function WeeklyBars({ data }: { data: { day: string; value: number | null }[] })
 export default function DashboardPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
 
-  // Demo persistente + inteligente:
-  // - se user já salvou demo: usa o valor
-  // - se não salvou: se tem token, começa OFF (real); se não tem, ON
-  const [demo, setDemo] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    const saved = localStorage.getItem(DEMO_KEY);
-    if (saved === "0") return false;
-    if (saved === "1") return true;
-    return !getToken();
-  });
+  const [demo, setDemo] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+useEffect(() => {
+  const saved = localStorage.getItem(DEMO_KEY);
+
+  if (saved === "0") {
+    setDemo(false);
+  } else if (saved === "1") {
+    setDemo(true);
+  } else {
+    setDemo(!getToken());
+  }
+
+  setMounted(true);
+}, []);
 
   const [firstTime, setFirstTime] = useState(true);
 
@@ -147,7 +157,6 @@ export default function DashboardPage() {
   const [loadingDash, setLoadingDash] = useState(false);
   const [dashError, setDashError] = useState<string>("");
 
-  // Auth
   useEffect(() => {
     const token = getToken();
     if (!token) {
@@ -163,7 +172,6 @@ export default function DashboardPage() {
       });
   }, []);
 
-  // firstTime: compat com sua flag local
   useEffect(() => {
     const done = localStorage.getItem(HAS_DATA_KEY);
     setFirstTime(!done);
@@ -174,9 +182,9 @@ export default function DashboardPage() {
     setDashError("");
 
     try {
-      const { items } = await getHistory();
+      const data = await getHistory();
 
-      const hasData = !!items?.length;
+      const hasData = !!data?.items?.length;
       localStorage.setItem(HAS_DATA_KEY, hasData ? "1" : "");
       setFirstTime(!hasData);
 
@@ -185,7 +193,57 @@ export default function DashboardPage() {
         return;
       }
 
-      const dash = buildDashboardFromHistory(items, "Lumen");
+      const dash: DashboardData = {
+        mascot: { name: "Lumen" },
+
+        score: data.score,
+        statusLabel: mapStatusLabel(data.status),
+        statusHint: data.insight,
+
+        xp: data.score,
+
+        scoreSeries: data.scoreHistory.map((d) => ({
+          day: d.date,
+          value: d.value,
+        })),
+
+        weeklySeries: data.weeklyAverage.map((d) => ({
+          day: d.dia,
+          value: d.value,
+        })),
+
+        distribution: [
+          {
+            label: "Confiável",
+            value: data.distribution.confiavel,
+            colorKey: "good",
+          },
+          {
+            label: "Neutro",
+            value: data.distribution.neutro,
+            colorKey: "neutral",
+          },
+          {
+            label: "Sensacionalista",
+            value: data.distribution.sensacionalista,
+            colorKey: "warn",
+          },
+          {
+            label: "Desinformação",
+            value: data.distribution.desinformacao,
+            colorKey: "bad",
+          },
+        ],
+
+        trend: {
+          title: "Consumo mais crítico e equilibrado",
+          subtitle: "Baseado no seu comportamento recente",
+        },
+
+        insight: data.insight,
+        lastAccess: data.items.slice(0, 5),
+      };
+
       setDashboardData(dash);
     } catch (e: any) {
       setDashError(e?.message || "Falha ao carregar dashboard");
@@ -195,7 +253,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Quando demo OFF, carrega do backend
   useEffect(() => {
     if (demo) return;
     const token = getToken();
@@ -289,7 +346,7 @@ export default function DashboardPage() {
     window.postMessage({ type: "LUMEN_CONNECT", token }, "*");
     alert("Extensão conectada! Agora ela pode registrar análises no seu dashboard.");
   }
-
+if (!mounted) return null;
   return (
     <div className={styles.page}>
       <header className={styles.topbar}>
@@ -536,9 +593,9 @@ export default function DashboardPage() {
                 <div key={a.id} className={styles.historyItem}>
                   <div className={`${styles.letter} ${styles["letter_" + a.label]}`}>{a.label}</div>
 
-                 <div className={styles.historyText}>
-  <div className={styles.historyUrl}>{a.url}</div>
-</div>
+                  <div className={styles.historyText}>
+                    <div className={styles.historyUrl}>{a.url}</div>
+                  </div>
 
                   <button className={styles.smallBtn} type="button">
                     Verificar fonte

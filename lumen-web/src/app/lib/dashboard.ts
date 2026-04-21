@@ -93,8 +93,7 @@ export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "L
     return { day: dayLabelBR(k), value: Math.round(v.sum / v.count) };
   });
 
-  // ✅ weeklySeries (últimos 7 dias) SEM inventar valores:
-  // dia sem dado = null
+  
   const weeklySeries: { day: string; value: number | null }[] = [];
   if (dayKeys.length) {
     const lastDate = new Date(dayKeys[dayKeys.length - 1] + "T00:00:00");
@@ -159,7 +158,7 @@ export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "L
     xp,
 
     scoreSeries,
-    weeklySeries: weeklySeries as any, // 👈 se seu type ainda for number, ajuste types.ts (veja abaixo)
+    weeklySeries: weeklySeries as any, 
 
     distribution,
 

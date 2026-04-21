@@ -4,13 +4,40 @@ export type AnalyzeMode = "ai" | "local-fallback" | "local";
 export type AccessItem = {
   id: string;
   url: string;
-  title?: string; // opcional (nem sempre você tem)
+  title?: string;
   label: LabelABCD;
-
-  // ✅ novos (pra UI ficar unificada)
   score?: number;
   domain?: string;
   mode?: AnalyzeMode;
+  createdAt?: string;
+  category?: string;
+};
+
+export type ScorePoint = {
+  date: string;
+  value: number;
+};
+
+export type WeeklyPoint = {
+  dia: string;
+  value: number;
+};
+
+export type DistributionRaw = {
+  confiavel: number;
+  neutro: number;
+  sensacionalista: number;
+  desinformacao: number;
+};
+
+export type HistoryResponse = {
+  items: AccessItem[];
+  score: number;
+  status: string;
+  distribution: DistributionRaw;
+  weeklyAverage: WeeklyPoint[];
+  scoreHistory: ScorePoint[];
+  insight: string;
 };
 
 export type DashboardData = {
@@ -23,11 +50,11 @@ export type DashboardData = {
   xp: number;
 
   scoreSeries: { day: string; value: number }[];
-  weeklySeries: { day: string; value: number | null }[]; // ✅ aqui
+  weeklySeries: { day: string; value: number | null }[];
 
   distribution: {
     label: string;
-    value: number; // %
+    value: number;
     colorKey: "good" | "neutral" | "warn" | "bad";
   }[];
 
