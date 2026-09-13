@@ -27,6 +27,7 @@ build/
 out/
 .next/
 coverage/
+.test-dist/
 
 # Tool caches
 .cache/

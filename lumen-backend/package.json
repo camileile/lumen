@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "pretypecheck": "npm run prisma:generate",
     "typecheck": "tsc --noEmit",
+    "pretest": "node -e \"require('node:fs').rmSync('.test-dist', { recursive: true, force: true })\"",
+    "test": "tsc -p tsconfig.test.json && node --test .test-dist/test/score.test.js .test-dist/test/history.test.js",
     "prisma:generate": "prisma generate --schema prisma/schema.prisma",
     "prebuild": "npm run prisma:generate",
     "build": "tsc",
