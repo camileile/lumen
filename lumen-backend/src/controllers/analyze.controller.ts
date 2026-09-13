@@ -11,6 +11,10 @@ const desinformacao = ["infowars.com", "naturalnews.com"];
 
 const pesos: Record<"A" | "B" | "C" | "D", number> = { A: 3, B: 1, C: -2, D: -5 };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function normalizeDomain(host: string) {
   return host.replace(/^www\./, "");
 }
@@ -93,9 +97,9 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
       summary = ai.summary || summaryByLabel(category, "ai");
       modelUsed = ai.modelUsed;
       mode = "ai";
-    } catch (e: any) {
+    } catch (e: unknown) {
       category = classificarABCD(domain);
-      const msg = String(e?.message || e);
+      const msg = errorMessage(e);
       summary = `${summaryByLabel(category, "local")} (IA indisponível: ${msg.slice(0, 80)})`;
       modelUsed = "fallback-local";
       mode = "local-fallback";
@@ -122,8 +126,8 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
       modelUsed: modelUsed ?? "unknown",
       mode,
     });
-  } catch (e: any) {
-    console.error("analyzeController:", e?.stack || e);
-    return res.status(500).json({ error: e?.message || "Erro ao analisar" });
+  } catch (e: unknown) {
+    console.error("analyzeController:", e instanceof Error ? e.stack : e);
+    return res.status(500).json({ error: e instanceof Error ? e.message : "Erro ao analisar" });
   }
 }

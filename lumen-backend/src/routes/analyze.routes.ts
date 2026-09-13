@@ -5,7 +5,6 @@ import { analyzeController } from "../controllers/analyze.controller";
 
 const router = Router();
 
-// ✅ cast pra evitar conflito de generics do Express
-router.post("/", authMiddleware as any, analyzeController as any);
+router.post("/", authMiddleware, analyzeController);
 
 export default router;

@@ -6,7 +6,9 @@ import { errorMiddleware } from "./middleware/error.middleware";
 
 export const app = express();
 
-app.use(cors({ origin: "http://localhost:3001" }));
+const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:3001";
+
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

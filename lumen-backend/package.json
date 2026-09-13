@@ -1,26 +1,46 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10 <11"
+  },
+  "packageManager": "npm@10.9.8",
   "scripts": {
+    "predev": "npm run prisma:generate",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "lint": "eslint .",
+    "pretypecheck": "npm run prisma:generate",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "prebuild": "npm run prisma:generate",
     "build": "tsc",
     "start": "node dist/server.js"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.4.1",
-    "@prisma/client": "^6.19.2",
+    "@prisma/adapter-better-sqlite3": "6.19.3",
+    "@prisma/client": "6.19.3",
     "bcrypt": "^6.0.0",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^11.10.0",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
+    "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "prisma": "^6.19.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^25.3.2"
+    "@types/node": "^22.20.2",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "prisma": "6.19.3",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0"
   }
 }

@@ -34,8 +34,8 @@ export default function CadastroPage() {
       const { token } = await register(name, email, password, confirmPassword);
       saveToken(token);
       router.push("/dashboard");
-    } catch (e: any) {
-      setError(e.message || "Erro ao criar conta. Tente novamente.");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao criar conta. Tente novamente.");
     }
   }
 
