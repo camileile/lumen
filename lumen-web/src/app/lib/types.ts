@@ -18,11 +18,6 @@ export type ScorePoint = {
   value: number;
 };
 
-export type WeeklyPoint = {
-  dia: string;
-  value: number;
-};
-
 export type DistributionRaw = {
   confiavel: number;
   neutro: number;
@@ -32,25 +27,31 @@ export type DistributionRaw = {
 
 export type HistoryResponse = {
   items: AccessItem[];
-  score: number;
+  score: number | null;
   status: string;
   distribution: DistributionRaw;
-  weeklyAverage: WeeklyPoint[];
+  weeklyAverage: number | null;
   scoreHistory: ScorePoint[];
   insight: string;
+  methodology: {
+    version: string;
+    observationWindow: number;
+    basis: string;
+  };
 };
 
 export type DashboardData = {
   mascot: { name: string };
 
-  score: number;
-  statusLabel: "Iniciante" | "Saudável" | "Atenção" | "Crítico";
+  score: number | null;
+  statusLabel: "Dados insuficientes" | "Faixa alta" | "Faixa intermediária" | "Faixa baixa";
   statusHint: string;
 
   xp: number;
 
   scoreSeries: { day: string; value: number }[];
   weeklySeries: { day: string; value: number | null }[];
+  weeklyAverage: number | null;
 
   distribution: {
     label: string;

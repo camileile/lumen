@@ -13,9 +13,13 @@ export default function Home() {
 
             <p className={styles.heroText}>
               O Lumen observa seus padrões de consumo informacional e os traduz em uma presença visual dinâmica
-              que evolui com você ao longo do tempo. À medida que seus hábitos digitais se tornam mais saudáveis
-              e equilibrados, o Lumen reflete essa transformação — incentivando escolhas mais conscientes de forma
+              que evolui com você ao longo do tempo. À medida que seus hábitos digitais mudam,
+              o Lumen reflete os sinais observados — incentivando escolhas mais conscientes de forma
               natural, sem interromper sua experiência e sem interferir na sua liberdade de navegar.
+            </p>
+            <p className={styles.heroText}>
+              Os resultados são estimativas automatizadas baseadas principalmente na fonte e no domínio.
+              O Lumen não lê o texto completo da notícia e não realiza checagem factual.
             </p>
 
             <div style={{ marginTop: 20 }}>
@@ -40,19 +44,19 @@ export default function Home() {
           <div className={styles.featureCard}>
             <Eye size={44} strokeWidth={1.5} className={styles.icon} />
             <h3>Detectar</h3>
-            <p>Reconhece o conteúdo que você acessa enquanto navega — sem interferir na sua experiência.</p>
+            <p>Identifica a URL e o domínio acessados enquanto você navega — sem ler o texto completo da página.</p>
           </div>
 
           <div className={styles.featureCard}>
             <BarChart3 size={44} strokeWidth={1.5} className={styles.icon} />
             <h3>Entender</h3>
-            <p>Classifica fontes e calcula um score informacional baseado na qualidade do que você consome.</p>
+            <p>Classifica sinais de fonte/domínio e calcula uma estimativa sobre suas observações recentes.</p>
           </div>
 
           <div className={styles.featureCard}>
             <TrendingUp size={44} strokeWidth={1.5} className={styles.icon} />
             <h3>Evoluir</h3>
-            <p>Acompanhe sua evolução, desenvolva hábitos mais saudáveis e fortaleça sua autonomia digital.</p>
+            <p>Acompanhe os sinais observados ao longo do tempo e fortaleça sua autonomia digital.</p>
           </div>
         </div>
       </section>
@@ -64,10 +68,11 @@ export default function Home() {
             <h2 className={styles.privacyTitle}>Privacidade como princípio.</h2>
 
             <p className={styles.privacyText}>
-              O Lumen analisa apenas dados públicos de navegação e não coleta mensagens, senhas ou informações
-              sensíveis.
+              Para gerar a análise e o histórico, o Lumen processa a URL e o domínio visitados. Quando conectado,
+              esses dados podem ser enviados à API e ao provedor de análise automatizada. O Lumen não lê mensagens
+              nem senhas.
               <br />
-              Seu comportamento não é exposto — apenas refletido para você.
+              URLs podem conter informações sensíveis; use o produto considerando essa limitação atual.
             </p>
           </div>
 
