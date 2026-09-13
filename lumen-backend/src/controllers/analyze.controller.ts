@@ -3,73 +3,69 @@ import { Response } from "express";
 import prisma from "../db/prisma";
 import { AuthedRequest } from "../middleware/auth.middleware";
 import { openrouterAnalyze } from "../ai/openrouter";
+import {
+  calculateScore,
+  Category,
+  normalizeCategory,
+  SCORE_METHOD_VERSION,
+  SCORE_WINDOW_SIZE,
+} from "../domain/score";
 
 const confiaveis = ["bbc.com", "reuters.com", "apnews.com", "nytimes.com", "theguardian.com"];
 const neutros = ["gov.br", "un.org", "who.int", "ibge.gov.br"];
 const sensacionalistas = ["metropoles.com", "r7.com", "terra.com.br"];
 const desinformacao = ["infowars.com", "naturalnews.com"];
 
-const pesos: Record<"A" | "B" | "C" | "D", number> = { A: 3, B: 1, C: -2, D: -5 };
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 function normalizeDomain(host: string) {
   return host.replace(/^www\./, "");
 }
 
-function classificarABCD(domain: string): "A" | "B" | "C" | "D" {
+function classificarABCD(domain: string): { category: Category; knownSource: boolean } {
   const d = normalizeDomain(domain);
-  if (confiaveis.some((s) => d.includes(s))) return "A";
-  if (neutros.some((s) => d.includes(s))) return "B";
-  if (sensacionalistas.some((s) => d.includes(s))) return "C";
-  if (desinformacao.some((s) => d.includes(s))) return "D";
-  return "B";
+  if (confiaveis.some((s) => d.includes(s))) return { category: "A", knownSource: true };
+  if (neutros.some((s) => d.includes(s))) return { category: "B", knownSource: true };
+  if (sensacionalistas.some((s) => d.includes(s))) return { category: "C", knownSource: true };
+  if (desinformacao.some((s) => d.includes(s))) return { category: "D", knownSource: true };
+  return { category: "B", knownSource: false };
 }
 
-function scoreFromHistorico(historico: number[]) {
-  const soma = historico.reduce((a, b) => a + b, 0);
-  const media = soma / historico.length;
-  let score = Math.round(((media + 5) / 8) * 100);
-  score = Math.max(0, Math.min(100, score));
-  return score;
-}
+const AUTOMATED_ESTIMATE_NOTICE =
+  "Estimativa automatizada baseada principalmente no domínio; não é checagem factual.";
 
-function summaryByLabel(label: "A" | "B" | "C" | "D", source: "ai" | "local") {
+function summaryByLabel(label: Category, source: "ai" | "local", knownSource = true) {
+  if (!knownSource) {
+    return `Fonte não reconhecida pela lista local; evidência insuficiente. ${AUTOMATED_ESTIMATE_NOTICE}`;
+  }
+
   const base =
     label === "A"
-      ? "Fonte com histórico mais confiável"
+      ? "Sinais compatíveis com uma fonte de referência"
       : label === "B"
-      ? "Fonte neutra / institucional"
+      ? "Sinais neutros ou institucionais"
       : label === "C"
-      ? "Fonte com tendência sensacionalista"
-      : "Fonte associada a desinformação";
+      ? "Sinais associados a uma abordagem sensacionalista"
+      : "Sinais de risco associados à fonte";
 
-  return `${base} (${source === "ai" ? "IA" : "lista local"}).`;
+  return `${base} (${source === "ai" ? "IA" : "lista local"}). ${AUTOMATED_ESTIMATE_NOTICE}`;
 }
 
-async function computeGlobalScoreForUser(userId: string, currentLabel: "A" | "B" | "C" | "D") {
-  // pega as últimas 19 análises (porque a atual ainda não foi salva)
+async function computeGlobalScoreForUser(userId: string, currentLabel: Category) {
   const last = await prisma.analysis.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 19,
-    select: { category: true }, // category guarda A/B/C/D
+    select: { category: true },
   });
 
-  const hist = last
-    .map((x) => String(x.category) as "A" | "B" | "C" | "D")
-    .filter((c): c is "A" | "B" | "C" | "D" => c === "A" || c === "B" || c === "C" || c === "D")
-    .map((c) => pesos[c]);
+  const history = last
+    .map((analysis) => normalizeCategory(analysis.category))
+    .filter((category): category is Category => category !== null)
+    .slice(0, SCORE_WINDOW_SIZE - 1)
+    .reverse();
 
-  // adiciona o peso do conteúdo atual e corta pra 20
-  const next = [pesos[currentLabel], ...hist].slice(0, 20);
+  const scoreGlobal = calculateScore([...history, currentLabel]);
+  if (scoreGlobal === null) throw new Error("Não foi possível calcular o score");
 
-  return {
-    historicoPesos: next,
-    scoreGlobal: scoreFromHistorico(next),
-  };
+  return scoreGlobal;
 }
 
 export async function analyzeController(req: AuthedRequest, res: Response) {
@@ -86,35 +82,38 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     }
 
     // 1) Categoria: tenta IA, senão fallback local (mas SEMPRE em A/B/C/D)
-    let category: "A" | "B" | "C" | "D" = "B";
+    let category: Category = "B";
     let summary = "Sem resumo.";
     let mode: "ai" | "local-fallback" = "ai";
     let modelUsed: string | undefined;
 
     try {
       const ai = await openrouterAnalyze({ url, domain: normalizeDomain(domain) });
-      category = ai.category; // precisa ser A/B/C/D
-      summary = ai.summary || summaryByLabel(category, "ai");
+      category = ai.category;
+      // The provider's numeric score is intentionally not persisted or exposed. The category is
+      // the only AI input to the canonical rolling-weight-v1 behavioral score.
+      summary = ai.summary
+        ? `${ai.summary} ${AUTOMATED_ESTIMATE_NOTICE}`
+        : summaryByLabel(category, "ai");
       modelUsed = ai.modelUsed;
       mode = "ai";
-    } catch (e: unknown) {
-      category = classificarABCD(domain);
-      const msg = errorMessage(e);
-      summary = `${summaryByLabel(category, "local")} (IA indisponível: ${msg.slice(0, 80)})`;
+    } catch {
+      const fallback = classificarABCD(domain);
+      category = fallback.category;
+      summary = `${summaryByLabel(category, "local", fallback.knownSource)} Análise remota indisponível.`;
       modelUsed = "fallback-local";
       mode = "local-fallback";
     }
 
-    // 2) Score GLOBAL (igual extensão): média móvel dos últimos 20 pesos do usuário
-    const { scoreGlobal } = await computeGlobalScoreForUser(req.userId, category);
+    const scoreGlobal = await computeGlobalScoreForUser(req.userId, category);
 
     // 3) Salva no banco com score GLOBAL
     const analysis = await prisma.analysis.create({
       data: {
         url,
         domain: normalizeDomain(domain),
-        category,          // A/B/C/D
-        score: scoreGlobal, // ✅ score global/comportamental
+        category,
+        score: scoreGlobal,
         summary,
         text: summary,
         userId: req.userId,
@@ -125,6 +124,11 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
       analysis,
       modelUsed: modelUsed ?? "unknown",
       mode,
+      methodology: {
+        version: SCORE_METHOD_VERSION,
+        observationWindow: SCORE_WINDOW_SIZE,
+        basis: "source-domain-category-history",
+      },
     });
   } catch (e: unknown) {
     console.error("analyzeController:", e instanceof Error ? e.stack : e);

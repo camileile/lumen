@@ -6,14 +6,8 @@ window.addEventListener("message", (event) => {
   }
 });
 
-function scoreToState(score) {
-  if (score >= 70) return "verde";
-  if (score >= 40) return "amarelo";
-  return "vermelho";
-}
-
 function getGifForScore(score) {
-  const state = scoreToState(score);
+  const state = LumenScoreContract.scoreState(score).key;
   if (state === "verde") return chrome.runtime.getURL("lume-verde.gif");
   if (state === "amarelo") return chrome.runtime.getURL("lume-amarelo.gif");
   return chrome.runtime.getURL("lume-vermelho.gif");
@@ -110,8 +104,9 @@ function ensureOverlay(payload, lumePos) {
     });
   }
 
-  const score = Number(payload?.score ?? 50);
-  const category = payload?.category ?? "B";
+  const score =
+    typeof payload?.score === "number" && Number.isFinite(payload.score) ? payload.score : null;
+  const category = payload?.category ?? "";
   const mode = payload?.lastMode ?? payload?.mode ?? "local";
   const domain = payload?.domain ?? "";
   const summary = payload?.summary ?? "";
@@ -122,14 +117,17 @@ function ensureOverlay(payload, lumePos) {
   tip.innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
       <div style="font-weight:700;font-size:13px;">Lumen</div>
-      <div style="opacity:.85;">${score}/100</div>
+      <div style="opacity:.85;">${score === null ? "—" : `${score}/100`}</div>
     </div>
     <div style="margin-top:6px;opacity:.9;">
       <div><b>Domínio:</b> ${escapeHtml(domain || "—")}</div>
-      <div><b>Categoria:</b> ${escapeHtml(String(category))} <span style="opacity:.75;">(${escapeHtml(String(mode))})</span></div>
+      <div><b>Categoria:</b> ${escapeHtml(String(category || "Evidência insuficiente"))} <span style="opacity:.75;">(${escapeHtml(String(mode))})</span></div>
     </div>
     <div style="margin-top:8px;opacity:.95;">
       ${escapeHtml(summary || "Sem resumo.")}
+    </div>
+    <div style="margin-top:8px;opacity:.75;">
+      Estimativa automatizada baseada principalmente no domínio. Não é checagem factual.
     </div>
   `;
 
@@ -163,8 +161,8 @@ async function boot() {
 
   ensureOverlay(
     {
-      score: st.score ?? 50,
-      category: st.category ?? "B",
+      score: typeof st.score === "number" ? st.score : null,
+      category: st.category ?? "",
       summary: st.summary ?? "Sem resumo.",
       domain: st.domain ?? "",
       lastMode: st.lastMode ?? "local",

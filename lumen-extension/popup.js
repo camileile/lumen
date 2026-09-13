@@ -13,13 +13,19 @@ function modeLabel(mode) {
 }
 
 function stateFromScore(score) {
-  if (score >= 70) return { key: "verde", label: "Verde", gif: "lume-verde.gif" };
-  if (score >= 40) return { key: "amarelo", label: "Amarelo", gif: "lume-amarelo.gif" };
-  return { key: "vermelho", label: "Vermelho", gif: "lume-vermelho.gif" };
+  const state = LumenScoreContract.scoreState(score);
+  const gif =
+    state.key === "verde"
+      ? "lume-verde.gif"
+      : state.key === "amarelo"
+      ? "lume-amarelo.gif"
+      : "lume-vermelho.gif";
+  return { ...state, gif };
 }
 
-function setUI({ score = 50, lastMode = "", domain = "", category = "" }) {
-  const st = stateFromScore(Number(score));
+function setUI({ score = null, lastMode = "", domain = "", category = "" }) {
+  const normalizedScore = typeof score === "number" && Number.isFinite(score) ? score : null;
+  const st = stateFromScore(normalizedScore);
 
   estadoEl.classList.remove("verde", "amarelo", "vermelho");
   estadoEl.classList.add(st.key);
@@ -29,7 +35,7 @@ function setUI({ score = 50, lastMode = "", domain = "", category = "" }) {
   // Ex: "Verde • A"
   estadoEl.innerText = category ? `${st.label} • ${category}` : st.label;
 
-  scoreEl.innerText = `Score: ${Number(score)}`;
+  scoreEl.innerText = normalizedScore === null ? "Score: indisponível" : `Score: ${normalizedScore}`;
   modeEl.innerText = lastMode ? `Modo: ${modeLabel(lastMode)}` : "";
   domainEl.innerText = domain ? `Domínio: ${domain}` : "";
 }
@@ -46,7 +52,7 @@ function readState() {
 (async () => {
   const st = await readState();
   setUI({
-    score: st.score ?? 50,
+    score: typeof st.score === "number" ? st.score : null,
     lastMode: st.lastMode ?? "",
     domain: st.domain ?? "",
     category: st.category ?? "",
@@ -92,7 +98,7 @@ document.getElementById("reanalyze").addEventListener("click", async () => {
 
       if (updated) {
         setUI({
-          score: now.score ?? 50,
+          score: typeof now.score === "number" ? now.score : null,
           lastMode: now.lastMode ?? "",
           domain: now.domain ?? "",
           category: now.category ?? "",
@@ -106,7 +112,7 @@ document.getElementById("reanalyze").addEventListener("click", async () => {
     // se não atualizou dentro do tempo, mostra o que tiver
     const final = await readState();
     setUI({
-      score: final.score ?? 50,
+      score: typeof final.score === "number" ? final.score : null,
       lastMode: final.lastMode ?? "",
       domain: final.domain ?? "",
       category: final.category ?? "",

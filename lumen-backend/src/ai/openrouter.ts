@@ -1,8 +1,9 @@
 import "dotenv/config";
+import { Category, normalizeCategory } from "../domain/score";
 
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 
-export type ORCategory = "A" | "B" | "C" | "D";
+export type ORCategory = Category;
 
 export type ORResult = {
   category: ORCategory; // A/B/C/D
@@ -38,18 +39,6 @@ function tryParseJson(text: string): Record<string, unknown> | null {
     }
   }
   return null;
-}
-
-const allowedABCD = new Set<ORCategory>(["A", "B", "C", "D"]);
-
-// compat: se vier o formato antigo
-function mapLegacyCategory(cat: string): ORCategory {
-  const c = cat.toLowerCase().trim();
-  if (c === "confiavel") return "A";
-  if (c === "neutro" || c === "desconhecido") return "B";
-  if (c === "sensacionalista") return "C";
-  if (c === "desinformacao") return "D";
-  return "B";
 }
 
 // Free Models Router (muda ao longo do tempo)
@@ -120,14 +109,15 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
 
   // aceita A/B/C/D ou legacy e mapeia
   const rawCat = String(parsed.category ?? "B").trim();
-  const category: ORCategory = allowedABCD.has(rawCat as ORCategory)
-    ? (rawCat as ORCategory)
-    : mapLegacyCategory(rawCat);
+  const normalizedCategory = normalizeCategory(rawCat);
+  const category: ORCategory = normalizedCategory ?? "B";
 
   const scoreNum = Number(parsed.score ?? 50);
   const score = Number.isFinite(scoreNum) ? Math.max(0, Math.min(100, Math.round(scoreNum))) : 50;
 
-  const summary = String(parsed.summary ?? "").slice(0, 500) || "Sem resumo.";
+  const summary =
+    String(parsed.summary ?? "").slice(0, 500) ||
+    (normalizedCategory ? "Sem resumo." : "Evidência insuficiente para classificar a fonte.");
 
   return {
     category,
