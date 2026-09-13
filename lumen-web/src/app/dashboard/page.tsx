@@ -245,8 +245,8 @@ useEffect(() => {
       };
 
       setDashboardData(dash);
-    } catch (e: any) {
-      setDashError(e?.message || "Falha ao carregar dashboard");
+    } catch (e: unknown) {
+      setDashError(e instanceof Error ? e.message : "Falha ao carregar dashboard");
       setDashboardData(null);
     } finally {
       setLoadingDash(false);
@@ -258,7 +258,6 @@ useEffect(() => {
     const token = getToken();
     if (!token) return;
     refreshDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [demo]);
 
   const data = useMemo(() => {
@@ -589,7 +588,7 @@ if (!mounted) return null;
                 <p>Assim que você analisar sites, o Lumen vai registrar seu histórico aqui.</p>
               </div>
             ) : (
-              data.lastAccess.map((a: any) => (
+              data.lastAccess.map((a) => (
                 <div key={a.id} className={styles.historyItem}>
                   <div className={`${styles.letter} ${styles["letter_" + a.label]}`}>{a.label}</div>
 

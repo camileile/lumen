@@ -23,8 +23,8 @@ export default function LoginPage() {
       const { token } = await login(email, password);
       saveToken(token);
       router.push("/dashboard");
-    } catch (e: any) {
-      setError(e.message || "Erro ao realizar login");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Erro ao realizar login");
     }
   }
 

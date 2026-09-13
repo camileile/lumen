@@ -113,7 +113,7 @@ export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "L
 
   // Distribuição A/B/C/D
   const dist: Record<LabelABCD, number> = { A: 0, B: 0, C: 0, D: 0 };
-  for (const it of sorted) dist[normalizeLabel(it) as LabelABCD]++;
+  for (const it of sorted) dist[normalizeLabel(it)]++;
 
   const total = sorted.length || 1;
 
@@ -144,7 +144,7 @@ export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "L
     .map((it) => ({
       id: it.id,
       url: it.url,
-      label: normalizeLabel(it) as any,
+      label: normalizeLabel(it),
       title: "",
     }));
 
@@ -158,7 +158,7 @@ export function buildDashboardFromHistory(items: AnalysisItem[], mascotName = "L
     xp,
 
     scoreSeries,
-    weeklySeries: weeklySeries as any, 
+    weeklySeries,
 
     distribution,
 

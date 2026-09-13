@@ -11,15 +11,31 @@ export type ORResult = {
   modelUsed?: string;
 };
 
-function tryParseJson(text: string) {
+type OpenRouterResponse = {
+  error?: { message?: unknown };
+  choices?: Array<{ message?: { content?: unknown } }>;
+  model?: unknown;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function tryParseJson(text: string): Record<string, unknown> | null {
   try {
-    return JSON.parse(text);
-  } catch {}
+    const parsed: unknown = JSON.parse(text);
+    if (isRecord(parsed)) return parsed;
+  } catch {
+    // Try extracting a JSON object from a response with surrounding text.
+  }
   const m = text.match(/\{[\s\S]*\}/);
   if (m) {
     try {
-      return JSON.parse(m[0]);
-    } catch {}
+      const parsed: unknown = JSON.parse(m[0]);
+      if (isRecord(parsed)) return parsed;
+    } catch {
+      // Ignore malformed JSON and use the documented fallback below.
+    }
   }
   return null;
 }
@@ -89,13 +105,17 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
     }),
   }).finally(() => clearTimeout(timer));
 
-  const data = await res.json().catch(() => ({} as any));
+  const data: OpenRouterResponse = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg = data?.error?.message ?? `OpenRouter HTTP ${res.status}`;
+    const msg =
+      typeof data.error?.message === "string"
+        ? data.error.message
+        : `OpenRouter HTTP ${res.status}`;
     throw new Error(`OPENROUTER_ERROR: ${msg}`);
   }
 
-  const content: string = data?.choices?.[0]?.message?.content ?? "{}";
+  const responseContent = data.choices?.[0]?.message?.content;
+  const content = typeof responseContent === "string" ? responseContent : "{}";
   const parsed = tryParseJson(content) ?? {};
 
   // aceita A/B/C/D ou legacy e mapeia
@@ -113,6 +133,6 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
     category,
     score,
     summary,
-    modelUsed: data?.model,
+    modelUsed: typeof data.model === "string" ? data.model : undefined,
   };
 }

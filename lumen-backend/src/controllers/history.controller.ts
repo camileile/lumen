@@ -4,7 +4,12 @@ import { AuthedRequest } from "../middleware/auth.middleware";
 
 type LabelABCD = "A" | "B" | "C" | "D";
 
-function normalizeLabelFromAnalysis(a: any): LabelABCD {
+type AnalysisLabelSource = {
+  label?: unknown;
+  category?: unknown;
+};
+
+function normalizeLabelFromAnalysis(a: AnalysisLabelSource): LabelABCD {
   if (a.label === "A" || a.label === "B" || a.label === "C" || a.label === "D") {
     return a.label;
   }
@@ -117,8 +122,10 @@ export async function getHistory(req: AuthedRequest, res: Response) {
       scoreHistory,
       insight,
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
-    return res.status(500).json({ error: e?.message || "Erro ao buscar histórico" });
+    return res.status(500).json({
+      error: e instanceof Error ? e.message : "Erro ao buscar histórico",
+    });
   }
 }
