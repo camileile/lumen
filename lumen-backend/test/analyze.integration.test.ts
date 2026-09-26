@@ -136,6 +136,7 @@ test("falls back deterministically on a provider HTTP error", async () => {
   const response = await analyze(token, { url: "https://example.com/article" });
   assert.equal(response.status, 200);
   assert.equal((response.body as { mode: string }).mode, "local-fallback");
+  assert.doesNotMatch(JSON.stringify(response.body), /synthetic failure|openrouter|stack/i);
 });
 
 test("falls back when the mocked provider aborts like a timeout", async () => {
@@ -167,4 +168,20 @@ test("handles a malformed AI payload without trusting a numeric default", async 
   assert.equal(response.status, 200);
   assert.equal(analysis.category, "B");
   assert.equal(analysis.score, 75);
+});
+
+test("rejects an invalid provider category and oversized provider response through the safe fallback", async () => {
+  const { token } = await registerFixtureUser(api);
+  api.mockOpenRouter(async () => providerResponse("UNTRUSTED", 100, "Must not be trusted"));
+  const invalidCategory = await analyze(token, { url: "https://example.com/category" });
+  assert.equal(invalidCategory.status, 200);
+  assert.equal((invalidCategory.body as { mode: string }).mode, "local-fallback");
+
+  api.mockOpenRouter(async () => new Response("x".repeat(70_000), {
+    status: 200,
+    headers: { "Content-Type": "application/json", "Content-Length": "70000" },
+  }));
+  const oversized = await analyze(token, { url: "https://example.com/oversized" });
+  assert.equal(oversized.status, 200);
+  assert.equal((oversized.body as { mode: string }).mode, "local-fallback");
 });
