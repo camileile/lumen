@@ -100,7 +100,27 @@ Run these commands in both `lumen-backend` and `lumen-web`:
 ```bash
 npm run lint
 npm run typecheck
+npm test
 npm run build
+```
+
+Backend tests can also be split by intent:
+
+```bash
+cd lumen-backend
+npm run test:unit
+npm run test:integration
+npm run test:coverage
+```
+
+Run the dependency audit policy with:
+
+```bash
+cd lumen-backend
+npm run audit:ci
+
+cd ../lumen-web
+npm audit --audit-level=high
 ```
 
 Validate the extension from the repository root:
@@ -110,9 +130,10 @@ node --check lumen-extension/background.js
 node --check lumen-extension/content.js
 node --check lumen-extension/popup.js
 node -e "JSON.parse(require('node:fs').readFileSync('lumen-extension/manifest.json', 'utf8'))"
+node --test lumen-extension/test/*.test.js
 ```
 
-Automated tests are not present yet; they will be introduced in a later modernization phase.
+Pull Requests targeting `main` run these validations automatically through `.github/workflows/ci.yml`. See `docs/TESTING_AND_CI_STATUS.md` for the test strategy and `docs/CI_AND_BRANCH_PROTECTION.md` for recommended repository settings.
 
 ## Current Limitations
 
