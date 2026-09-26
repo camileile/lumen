@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Sinais automatizados sobre fontes para apoiar uma navegação mais consciente",
 
-  "permissions": ["tabs", "storage", "activeTab", "scripting"],
+  "permissions": ["tabs", "storage"],
   "host_permissions": ["http://localhost:3000/*"],
 
   "background": {
@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["score-contract.js", "content.js"],
+      "js": ["score-contract.js", "handshake-policy.js", "content.js"],
       "run_at": "document_idle"
     }
   ],
@@ -35,10 +35,7 @@
       "resources": [
         "lume-verde.gif",
         "lume-amarelo.gif",
-        "lume-vermelho.gif",
-        "icon-verde.png",
-        "icon-amarelo.png",
-        "icon-vermelho.png"
+        "lume-vermelho.gif"
       ],
       "matches": ["<all_urls>"]
     }

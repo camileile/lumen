@@ -281,11 +281,40 @@ useEffect(() => {
 
   const current = steps[step];
 
-  function connectExtension() {
+  async function connectExtension() {
     const token = getToken();
     if (!token) return alert("Faça login primeiro.");
-    window.postMessage({ type: "LUMEN_CONNECT", token }, "*");
-    alert("Extensão conectada! Agora ela pode registrar análises no seu dashboard.");
+    const requestId = crypto.randomUUID().replaceAll("-", "");
+
+    const connected = await new Promise<boolean>((resolve) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("message", onMessage);
+        resolve(false);
+      }, 5_000);
+
+      function onMessage(event: MessageEvent) {
+        if (event.source !== window || event.origin !== window.location.origin || event.data?.requestId !== requestId) return;
+        if (event.data?.type === "LUMEN_CONNECT_CHALLENGE" && typeof event.data.challenge === "string") {
+          window.postMessage(
+            { type: "LUMEN_CONNECT_COMMIT", requestId, challenge: event.data.challenge, token },
+            window.location.origin,
+          );
+          return;
+        }
+        if (event.data?.type === "LUMEN_CONNECT_RESULT") {
+          window.clearTimeout(timeout);
+          window.removeEventListener("message", onMessage);
+          resolve(event.data.ok === true);
+        }
+      }
+
+      window.addEventListener("message", onMessage);
+      window.postMessage({ type: "LUMEN_CONNECT_REQUEST", requestId }, window.location.origin);
+    });
+
+    alert(connected
+      ? "Extensão conectada! Agora ela pode registrar análises no seu dashboard."
+      : "Não foi possível conectar a extensão. Verifique se ela está instalada e tente novamente.");
   }
 if (!mounted) return null;
   return (
@@ -316,7 +345,7 @@ if (!mounted) return null;
             type="button"
             onClick={connectExtension}
             className={styles.demoBtn}
-            title="Envia o token para a extensão via postMessage"
+            title="Conecta a extensão ao dashboard com validação de origem"
           >
             Conectar extensão
           </button>
