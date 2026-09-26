@@ -1,0 +1,126 @@
+name: Pull Request CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumen-web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: lumen-web/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Audit production and development dependencies
+        run: npm audit --audit-level=high
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./prisma/ci.db
+      JWT_SECRET: test-only-secret-do-not-use-in-production
+      OPENROUTER_API_KEY: test-only-openrouter-key
+      OPENROUTER_BASE_URL: https://openrouter.test/api/v1
+      CORS_ORIGIN: http://localhost:3001
+    defaults:
+      run:
+        working-directory: lumen-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          cache: npm
+          cache-dependency-path: lumen-backend/package-lock.json
+
+      - run: npm ci
+      - run: npm run prisma:generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Enforce the documented backend audit exception
+        run: npm run audit:ci
+
+  extension:
+    name: Extension
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.23.2
+          package-manager-cache: false
+
+      - name: Parse manifest
+        run: node -e "JSON.parse(require('node:fs').readFileSync('lumen-extension/manifest.json', 'utf8'))"
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: find lumen-extension -type f -name '*.js' -print0 | xargs -0 -n 1 node --check
+
+      - name: Test extension logic
+        shell: bash
+        run: node --test lumen-extension/test/*.test.js
+
+      - name: Verify downloadable extension package
+        shell: bash
+        run: |
+          runtime_files=(
+            background.js content.js domain-classifier.js manifest.json
+            popup.css popup.html popup.js score-contract.js
+            icon-amarelo.png icon-verde.png icon-vermelho.png
+            lume-amarelo.gif lume-verde.gif lume-vermelho.gif
+          )
+          for file in "${runtime_files[@]}"; do
+            unzip -p lumen-web/public/lumen-extension.zip "lumen-extension/$file" |
+              cmp - "lumen-extension/$file"
+          done
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout full PR history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Scan Pull Request commits with Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
