@@ -104,8 +104,17 @@ jobs:
             lume-amarelo.gif lume-verde.gif lume-vermelho.gif
           )
           for file in "${runtime_files[@]}"; do
-            unzip -p lumen-web/public/lumen-extension.zip "lumen-extension/$file" |
-              cmp - "lumen-extension/$file"
+            case "$file" in
+              *.js|*.json|*.css|*.html)
+                diff -u \
+                  <(unzip -p lumen-web/public/lumen-extension.zip "lumen-extension/$file" | tr -d '\r') \
+                  <(tr -d '\r' < "lumen-extension/$file")
+                ;;
+              *)
+                unzip -p lumen-web/public/lumen-extension.zip "lumen-extension/$file" |
+                  cmp - "lumen-extension/$file"
+                ;;
+            esac
           done
 
   secret-scan:
