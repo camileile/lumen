@@ -6,6 +6,11 @@ import styles from "./dashboard.module.css";
 import { getDashboardMock } from "../lib/dashboardMock";
 import { getHistory } from "../lib/history";
 import type { DashboardData } from "../lib/types";
+import {
+  AUTOMATED_ESTIMATE_COPY,
+  mapHistoryToDashboard,
+  NOT_ENOUGH_DATA_COPY,
+} from "../lib/dashboardData";
 
 import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth";
 import { ChevronRight, X, User, Download, Settings, Trophy, Pencil } from "lucide-react";
@@ -44,20 +49,6 @@ function xpText(xp: number) {
   if (xp >= 80) return "Quase no próximo nível!";
   if (xp >= 40) return "Evoluindo bem!";
   return "Primeiros passos!";
-}
-
-function mapStatusLabel(
-  status: string,
-): "Dados insuficientes" | "Faixa alta" | "Faixa intermediária" | "Faixa baixa" {
-  if (status === "higher-signal") return "Faixa alta";
-  if (status === "mixed-signal") return "Faixa intermediária";
-  if (status === "lower-signal") return "Faixa baixa";
-  return "Dados insuficientes";
-}
-
-function dateLabel(isoDate: string) {
-  const [, month, day] = isoDate.split("-");
-  return month && day ? `${day}/${month}` : isoDate;
 }
 
 function ScoreLine({
@@ -195,62 +186,7 @@ useEffect(() => {
       localStorage.setItem(HAS_DATA_KEY, hasData ? "1" : "");
       setFirstTime(!hasData);
 
-      const dash: DashboardData = {
-        mascot: { name: "Lumen" },
-
-        score: data.score,
-        statusLabel: mapStatusLabel(data.status),
-        statusHint: data.insight,
-
-        xp: data.score ?? 0,
-
-        scoreSeries: data.scoreHistory.map((d) => ({
-          day: dateLabel(d.date),
-          value: d.value,
-        })),
-
-        weeklySeries: data.scoreHistory.slice(-7).map((d) => ({
-          day: dateLabel(d.date),
-          value: d.value,
-        })),
-        weeklyAverage: data.weeklyAverage,
-
-        distribution: hasData ? [
-          {
-            label: "Categoria A — referência",
-            value: data.distribution.confiavel,
-            colorKey: "good",
-          },
-          {
-            label: "Categoria B — neutra/desconhecida",
-            value: data.distribution.neutro,
-            colorKey: "neutral",
-          },
-          {
-            label: "Categoria C — sinais sensacionalistas",
-            value: data.distribution.sensacionalista,
-            colorKey: "warn",
-          },
-          {
-            label: "Categoria D — sinais de risco",
-            value: data.distribution.desinformacao,
-            colorKey: "bad",
-          },
-        ] : [],
-
-        trend: {
-          title: "Histórico observado",
-          subtitle:
-            data.scoreHistory.length < 2
-              ? "Not enough data yet"
-              : "Somente dias com observações reais",
-        },
-
-        insight: data.insight,
-        lastAccess: data.items.slice(0, 5),
-      };
-
-      setDashboardData(dash);
+      setDashboardData(mapHistoryToDashboard(data));
     } catch (e: unknown) {
       setDashError(e instanceof Error ? e.message : "Falha ao carregar dashboard");
       setDashboardData(null);
@@ -311,7 +247,7 @@ useEffect(() => {
       id: "s1",
       anchor: "score",
       title: "Seu Score Informacional",
-      text: "Esta estimativa usa até 20 categorias recentes de fonte/domínio. Não é uma probabilidade de verdade nem uma checagem factual.",
+      text: `${AUTOMATED_ESTIMATE_COPY} Usa até 20 categorias recentes de fonte/domínio.`,
     },
     {
       id: "s2",
@@ -503,7 +439,7 @@ if (!mounted) return null;
             <div className={styles.chartMock} style={{ height: 180 }}>
               {data.scoreSeries.length === 0 ? (
                 <div className={styles.chartEmpty}>
-                  <strong>Not enough data yet</strong>
+                  <strong>{NOT_ENOUGH_DATA_COPY}</strong>
                   <span>Faça sua primeira análise para gerar uma estimativa.</span>
                 </div>
               ) : (
@@ -525,7 +461,7 @@ if (!mounted) return null;
 
           {data.weeklySeries.length === 0 ? (
             <div className={styles.miniEmpty}>
-              <span>Not enough data yet</span>
+              <span>{NOT_ENOUGH_DATA_COPY}</span>
             </div>
           ) : (
             <div className={styles.miniChart} style={{ height: 120 }}>
@@ -575,7 +511,7 @@ if (!mounted) return null;
           </div>
           {data.weeklySeries.length === 0 ? (
             <div className={styles.miniEmpty}>
-              <span>Not enough data yet</span>
+              <span>{NOT_ENOUGH_DATA_COPY}</span>
             </div>
           ) : (
             <div className={styles.miniChart2} style={{ height: 140 }}>
