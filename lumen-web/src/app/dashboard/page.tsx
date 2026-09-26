@@ -33,11 +33,11 @@ const NAME_KEY = "lumen_user_name_v1";
 const HAS_DATA_KEY = "lumen_has_data_v1";
 const DEMO_KEY = "lumen_demo_v1";
 
-function mascotByScore(score: number, firstTime: boolean) {
+function mascotByStatus(status: DashboardData["statusLabel"], firstTime: boolean) {
   if (firstTime) return "/lume-amarelo.gif";
-  if (score >= 70) return "/lume-verde.gif";
-  if (score >= 40) return "/lume-amarelo.gif";
-  return "/lume-vermelho.gif";
+  if (status === "Faixa alta") return "/lume-verde.gif";
+  if (status === "Faixa baixa") return "/lume-vermelho.gif";
+  return "/lume-amarelo.gif";
 }
 
 function xpText(xp: number) {
@@ -46,11 +46,18 @@ function xpText(xp: number) {
   return "Primeiros passos!";
 }
 
-function mapStatusLabel(status: string): "Iniciante" | "Saudável" | "Atenção" | "Crítico" {
-  if (status === "Saudável") return "Saudável";
-  if (status === "Atenção") return "Atenção";
-  if (status === "Alerta") return "Crítico";
-  return "Iniciante";
+function mapStatusLabel(
+  status: string,
+): "Dados insuficientes" | "Faixa alta" | "Faixa intermediária" | "Faixa baixa" {
+  if (status === "higher-signal") return "Faixa alta";
+  if (status === "mixed-signal") return "Faixa intermediária";
+  if (status === "lower-signal") return "Faixa baixa";
+  return "Dados insuficientes";
+}
+
+function dateLabel(isoDate: string) {
+  const [, month, day] = isoDate.split("-");
+  return month && day ? `${day}/${month}` : isoDate;
 }
 
 function ScoreLine({
@@ -188,11 +195,6 @@ useEffect(() => {
       localStorage.setItem(HAS_DATA_KEY, hasData ? "1" : "");
       setFirstTime(!hasData);
 
-      if (!hasData) {
-        setDashboardData(null);
-        return;
-      }
-
       const dash: DashboardData = {
         mascot: { name: "Lumen" },
 
@@ -200,44 +202,48 @@ useEffect(() => {
         statusLabel: mapStatusLabel(data.status),
         statusHint: data.insight,
 
-        xp: data.score,
+        xp: data.score ?? 0,
 
         scoreSeries: data.scoreHistory.map((d) => ({
-          day: d.date,
+          day: dateLabel(d.date),
           value: d.value,
         })),
 
-        weeklySeries: data.weeklyAverage.map((d) => ({
-          day: d.dia,
+        weeklySeries: data.scoreHistory.slice(-7).map((d) => ({
+          day: dateLabel(d.date),
           value: d.value,
         })),
+        weeklyAverage: data.weeklyAverage,
 
-        distribution: [
+        distribution: hasData ? [
           {
-            label: "Confiável",
+            label: "Categoria A — referência",
             value: data.distribution.confiavel,
             colorKey: "good",
           },
           {
-            label: "Neutro",
+            label: "Categoria B — neutra/desconhecida",
             value: data.distribution.neutro,
             colorKey: "neutral",
           },
           {
-            label: "Sensacionalista",
+            label: "Categoria C — sinais sensacionalistas",
             value: data.distribution.sensacionalista,
             colorKey: "warn",
           },
           {
-            label: "Desinformação",
+            label: "Categoria D — sinais de risco",
             value: data.distribution.desinformacao,
             colorKey: "bad",
           },
-        ],
+        ] : [],
 
         trend: {
-          title: "Consumo mais crítico e equilibrado",
-          subtitle: "Baseado no seu comportamento recente",
+          title: "Histórico observado",
+          subtitle:
+            data.scoreHistory.length < 2
+              ? "Not enough data yet"
+              : "Somente dias com observações reais",
         },
 
         insight: data.insight,
@@ -305,13 +311,13 @@ useEffect(() => {
       id: "s1",
       anchor: "score",
       title: "Seu Score Informacional",
-      text: "Aqui você vê a evolução do seu consumo informacional. Quanto mais equilibrado, mais “saudável” fica.",
+      text: "Esta estimativa usa até 20 categorias recentes de fonte/domínio. Não é uma probabilidade de verdade nem uma checagem factual.",
     },
     {
       id: "s2",
       anchor: "distribution",
       title: "Distribuição A/B/C/D",
-      text: "Este gráfico mostra a frequência das categorias: A (confiável), B (neutra), C (sensacionalista), D (desinformação).",
+      text: "Este gráfico mostra a frequência das categorias na mesma janela do score. B também pode significar fonte desconhecida ou evidência insuficiente.",
     },
     {
       id: "s3",
@@ -448,7 +454,7 @@ if (!mounted) return null;
 
           <div className={styles.avatarBox}>
             <img
-              src={mascotByScore(data.score, firstTime)}
+              src={mascotByStatus(data.statusLabel, firstTime)}
               alt="Lumen"
               className={styles.avatarImg}
             />
@@ -490,15 +496,15 @@ if (!mounted) return null;
 
         <section className={`${styles.card} ${styles.scoreCard}`} data-anchor="score">
           <div className={styles.scoreHeader}>
-            <h2>Score Informacional</h2>
+            <h2>Estimativa informacional</h2>
           </div>
 
           <div className={styles.scoreContent}>
             <div className={styles.chartMock} style={{ height: 180 }}>
               {data.scoreSeries.length === 0 ? (
                 <div className={styles.chartEmpty}>
-                  <strong>Sem dados ainda</strong>
-                  <span>Faça sua primeira análise para ver a evolução.</span>
+                  <strong>Not enough data yet</strong>
+                  <span>Faça sua primeira análise para gerar uma estimativa.</span>
                 </div>
               ) : (
                 <ScoreLine data={data.scoreSeries} showAxis={true} />
@@ -506,7 +512,7 @@ if (!mounted) return null;
             </div>
 
             <div className={styles.scoreSide}>
-              <div className={styles.scoreValue}>{data.score}</div>
+              <div className={styles.scoreValue}>{data.score ?? "—"}</div>
               <div className={styles.scoreLabel}>{data.statusLabel}</div>
               <div className={styles.scoreHint}>{data.statusHint}</div>
             </div>
@@ -515,11 +521,11 @@ if (!mounted) return null;
 
         <section className={`${styles.card} ${styles.smallCard}`}>
           <h3>{data.trend.title}</h3>
-          <p className={styles.smallSub}>↗ {data.trend.subtitle}</p>
+          <p className={styles.smallSub}>{data.trend.subtitle}</p>
 
           {data.weeklySeries.length === 0 ? (
             <div className={styles.miniEmpty}>
-              <span>Sem dados</span>
+              <span>Not enough data yet</span>
             </div>
           ) : (
             <div className={styles.miniChart} style={{ height: 120 }}>
@@ -563,13 +569,13 @@ if (!mounted) return null;
         </section>
 
         <section className={`${styles.card} ${styles.smallCard}`}>
-          <h3>Média semanal</h3>
+          <h3>Média dos dias com dados</h3>
           <div className={styles.weekValue}>
-            <span>{data.score}</span>
+            <span>{data.weeklyAverage ?? "—"}</span>
           </div>
           {data.weeklySeries.length === 0 ? (
             <div className={styles.miniEmpty}>
-              <span>Sem dados</span>
+              <span>Not enough data yet</span>
             </div>
           ) : (
             <div className={styles.miniChart2} style={{ height: 140 }}>
@@ -597,7 +603,7 @@ if (!mounted) return null;
                   </div>
 
                   <button className={styles.smallBtn} type="button">
-                    Verificar fonte
+                    Ver sinais da fonte
                   </button>
                 </div>
               ))

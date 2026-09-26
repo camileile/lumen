@@ -4,12 +4,13 @@ export function getDashboardMock(firstTime = false): DashboardData {
   if (firstTime) {
     return {
       mascot: { name: "Lumen" },
-      score: 0,
-      statusLabel: "Iniciante",
-      statusHint: "Comece analisando uma URL para gerar seu primeiro score.",
+      score: null,
+      statusLabel: "Dados insuficientes",
+      statusHint: "Not enough data yet. Faça uma análise para gerar a primeira estimativa.",
       xp: 0,
       scoreSeries: [],
       weeklySeries: [],
+      weeklyAverage: null,
       distribution: [],
       trend: { title: "Tendência", subtitle: "Sem dados ainda" },
       insight: "Bem-vindo(a)! Assim que você analisar sites, o Lumen vai montar seus gráficos.",
@@ -20,8 +21,8 @@ export function getDashboardMock(firstTime = false): DashboardData {
   return {
     mascot: { name: "Robertin" },
     score: 74,
-    statusLabel: "Saudável",
-    statusHint: "Você está consumindo majoritariamente fontes equilibradas.",
+    statusLabel: "Faixa alta",
+    statusHint: "Exemplo de estimativa automatizada; não representa checagem factual.",
     xp: 58,
     scoreSeries: [
       { day: "seg", value: 58 },
@@ -41,18 +42,18 @@ export function getDashboardMock(firstTime = false): DashboardData {
       { day: "sáb", value: 78 },
       { day: "dom", value: 74 },
     ],
+    weeklyAverage: 66,
     distribution: [
-      { label: "Confiável", value: 42, colorKey: "good" },
-      { label: "Neutro", value: 33, colorKey: "neutral" },
-      { label: "Sensacionalista", value: 18, colorKey: "warn" },
-      { label: "Desinformação", value: 7, colorKey: "bad" },
+      { label: "Categoria A — referência", value: 42, colorKey: "good" },
+      { label: "Categoria B — neutra/desconhecida", value: 33, colorKey: "neutral" },
+      { label: "Categoria C — sinais sensacionalistas", value: 18, colorKey: "warn" },
+      { label: "Categoria D — sinais de risco", value: 7, colorKey: "bad" },
     ],
     trend: {
-      title: "Tendência",
-      subtitle: "Consumo mais crítico e equilibrado",
+      title: "Histórico demonstrativo",
+      subtitle: "Dados fictícios identificados como modo demo",
     },
-    insight:
-      "Você reduziu 12% o consumo de fontes sensacionalistas nos últimos 7 dias. Seu padrão informacional está mais estável e consciente.",
+    insight: "Exemplo demonstrativo. Estes valores não representam observações reais do usuário.",
     lastAccess: [
       { id: "1", label: "A", title: "Relatório econômico anual", url: "economiaoficial.gov.br/relatorio-anual-2025" },
       { id: "2", label: "A", title: "Atualização climática global", url: "climatecenter.org/atualizacao-global" },

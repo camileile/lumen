@@ -1,3 +1,5 @@
+importScripts("score-contract.js");
+
 const API_URL = "http://localhost:3000";
 
 const confiaveis = ["bbc.com", "reuters.com", "apnews.com", "nytimes.com", "theguardian.com"];
@@ -5,7 +7,8 @@ const neutros = ["gov.br", "un.org", "who.int", "ibge.gov.br"];
 const sensacionalistas = ["metropoles.com", "r7.com", "terra.com.br"];
 const desinformacao = ["infowars.com", "naturalnews.com"];
 
-const pesos = { A: 3, B: 1, C: -2, D: -5 };
+const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, methodVersion } =
+  LumenScoreContract;
 
 function normalizeDomain(url) {
   return new URL(url).hostname.replace(/^www\./, "");
@@ -13,29 +16,15 @@ function normalizeDomain(url) {
 
 function classificarLocal(url) {
   const dominio = normalizeDomain(url);
-  if (confiaveis.some((s) => dominio.includes(s))) return "A";
-  if (neutros.some((s) => dominio.includes(s))) return "B";
-  if (sensacionalistas.some((s) => dominio.includes(s))) return "C";
-  if (desinformacao.some((s) => dominio.includes(s))) return "D";
-  return "B";
-}
-
-function scoreFromHistorico(historico) {
-  const soma = historico.reduce((a, b) => a + b, 0);
-  const media = soma / historico.length;
-  let score = Math.round(((media + 5) / 8) * 100);
-  score = Math.max(0, Math.min(100, score));
-  return score;
-}
-
-function scoreToState(score) {
-  if (score >= 70) return "verde";
-  if (score >= 40) return "amarelo";
-  return "vermelho";
+  if (confiaveis.some((s) => dominio.includes(s))) return { category: "A", knownSource: true };
+  if (neutros.some((s) => dominio.includes(s))) return { category: "B", knownSource: true };
+  if (sensacionalistas.some((s) => dominio.includes(s))) return { category: "C", knownSource: true };
+  if (desinformacao.some((s) => dominio.includes(s))) return { category: "D", knownSource: true };
+  return { category: "B", knownSource: false };
 }
 
 async function setIconByScore(score) {
-  const state = scoreToState(score);
+  const state = scoreState(score).key;
   const path =
     state === "verde"
       ? "icon-verde.png"
@@ -58,21 +47,24 @@ async function sendOverlayUpdateToTab(tabId, payload) {
  * ✅ Atualiza score/ícone/overlay SEMPRE localmente (instantâneo)
  */
 async function analyzeLocal(url) {
-  const label = classificarLocal(url); // A/B/C/D
-  const peso = pesos[label];
+  const classification = classificarLocal(url);
+  const label = classification.category;
+  const peso = categoryWeights[label];
 
   const { historico = [] } = await chrome.storage.local.get(["historico"]);
-  const next = [...historico, peso].slice(-20);
-  const score = scoreFromHistorico(next);
+  const next = [...historico, peso].slice(-windowSize);
+  const score = calculateScoreFromWeights(next);
 
   const summary =
-    label === "A"
-      ? "Fonte com histórico mais confiável (lista local)."
+    !classification.knownSource
+      ? "Fonte não reconhecida pela lista local; evidência insuficiente. Não é checagem factual."
+      : label === "A"
+      ? "Sinais compatíveis com uma fonte de referência (lista local). Não é checagem factual."
       : label === "B"
-      ? "Fonte neutra / institucional (lista local)."
+      ? "Sinais neutros ou institucionais (lista local). Não é checagem factual."
       : label === "C"
-      ? "Fonte com tendência sensacionalista (lista local)."
-      : "Fonte associada a desinformação (lista local).";
+      ? "Sinais associados a uma abordagem sensacionalista (lista local). Não é checagem factual."
+      : "Sinais de risco associados à fonte (lista local). Não é checagem factual.";
 
   await chrome.storage.local.set({ historico: next });
 
@@ -83,6 +75,7 @@ async function analyzeLocal(url) {
     summary,
     domain: normalizeDomain(url),
     historico: next,
+    methodologyVersion: methodVersion,
   };
 }
 
@@ -122,6 +115,7 @@ async function analyzeRemote(url) {
     summary: a.summary,
     domain: a.domain,
     modelUsed: data?.modelUsed,
+    methodologyVersion: data?.methodology?.version || methodVersion,
   };
 }
 
