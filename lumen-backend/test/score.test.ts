@@ -7,8 +7,13 @@ import {
   classifyScore,
   normalizeCategory,
   SCORE_THRESHOLDS,
+  SCORE_METHOD_VERSION,
   SCORE_WINDOW_SIZE,
 } from "../src/domain/score";
+
+test("score contract remains rolling-weight-v1", () => {
+  assert.equal(SCORE_METHOD_VERSION, "rolling-weight-v1");
+});
 
 test("empty history has no score", () => {
   assert.equal(calculateScore([]), null);

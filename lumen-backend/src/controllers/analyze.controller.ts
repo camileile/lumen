@@ -10,24 +10,7 @@ import {
   SCORE_METHOD_VERSION,
   SCORE_WINDOW_SIZE,
 } from "../domain/score";
-
-const confiaveis = ["bbc.com", "reuters.com", "apnews.com", "nytimes.com", "theguardian.com"];
-const neutros = ["gov.br", "un.org", "who.int", "ibge.gov.br"];
-const sensacionalistas = ["metropoles.com", "r7.com", "terra.com.br"];
-const desinformacao = ["infowars.com", "naturalnews.com"];
-
-function normalizeDomain(host: string) {
-  return host.replace(/^www\./, "");
-}
-
-function classificarABCD(domain: string): { category: Category; knownSource: boolean } {
-  const d = normalizeDomain(domain);
-  if (confiaveis.some((s) => d.includes(s))) return { category: "A", knownSource: true };
-  if (neutros.some((s) => d.includes(s))) return { category: "B", knownSource: true };
-  if (sensacionalistas.some((s) => d.includes(s))) return { category: "C", knownSource: true };
-  if (desinformacao.some((s) => d.includes(s))) return { category: "D", knownSource: true };
-  return { category: "B", knownSource: false };
-}
+import { classifyHostname, hostnameFromHttpUrl } from "../domain/source-classifier";
 
 const AUTOMATED_ESTIMATE_NOTICE =
   "Estimativa automatizada baseada principalmente no domínio; não é checagem factual.";
@@ -74,12 +57,8 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     if (!url) return res.status(400).json({ error: "URL é obrigatória" });
     if (!req.userId) return res.status(401).json({ error: "Não autenticado" });
 
-    let domain = "";
-    try {
-      domain = new URL(url).hostname;
-    } catch {
-      return res.status(400).json({ error: "URL inválida" });
-    }
+    const domain = hostnameFromHttpUrl(url);
+    if (!domain) return res.status(400).json({ error: "URL inválida" });
 
     // 1) Categoria: tenta IA, senão fallback local (mas SEMPRE em A/B/C/D)
     let category: Category = "B";
@@ -88,7 +67,7 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     let modelUsed: string | undefined;
 
     try {
-      const ai = await openrouterAnalyze({ url, domain: normalizeDomain(domain) });
+      const ai = await openrouterAnalyze({ url, domain });
       category = ai.category;
       // The provider's numeric score is intentionally not persisted or exposed. The category is
       // the only AI input to the canonical rolling-weight-v1 behavioral score.
@@ -98,7 +77,7 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
       modelUsed = ai.modelUsed;
       mode = "ai";
     } catch {
-      const fallback = classificarABCD(domain);
+      const fallback = classifyHostname(domain);
       category = fallback.category;
       summary = `${summaryByLabel(category, "local", fallback.knownSource)} Análise remota indisponível.`;
       modelUsed = "fallback-local";
@@ -111,7 +90,7 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     const analysis = await prisma.analysis.create({
       data: {
         url,
-        domain: normalizeDomain(domain),
+        domain,
         category,
         score: scoreGlobal,
         summary,
