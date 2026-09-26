@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": ".test-dist",
+    "noEmit": false,
+    "incremental": false,
+    "isolatedModules": false,
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "sourceMap": false,
+    "types": ["node"]
+  },
+  "include": [
+    "src/app/lib/api.ts",
+    "src/app/lib/dashboardData.ts",
+    "src/app/lib/types.ts",
+    "test/**/*.ts"
+  ],
+  "exclude": ["node_modules", ".next", ".test-dist"]
+}

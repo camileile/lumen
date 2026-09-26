@@ -1,27 +1,10 @@
-importScripts("score-contract.js");
+importScripts("score-contract.js", "domain-classifier.js");
 
 const API_URL = "http://localhost:3000";
 
-const confiaveis = ["bbc.com", "reuters.com", "apnews.com", "nytimes.com", "theguardian.com"];
-const neutros = ["gov.br", "un.org", "who.int", "ibge.gov.br"];
-const sensacionalistas = ["metropoles.com", "r7.com", "terra.com.br"];
-const desinformacao = ["infowars.com", "naturalnews.com"];
-
 const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, methodVersion } =
   LumenScoreContract;
-
-function normalizeDomain(url) {
-  return new URL(url).hostname.replace(/^www\./, "");
-}
-
-function classificarLocal(url) {
-  const dominio = normalizeDomain(url);
-  if (confiaveis.some((s) => dominio.includes(s))) return { category: "A", knownSource: true };
-  if (neutros.some((s) => dominio.includes(s))) return { category: "B", knownSource: true };
-  if (sensacionalistas.some((s) => dominio.includes(s))) return { category: "C", knownSource: true };
-  if (desinformacao.some((s) => dominio.includes(s))) return { category: "D", knownSource: true };
-  return { category: "B", knownSource: false };
-}
+const { classifyUrl } = LumenDomainClassifier;
 
 async function setIconByScore(score) {
   const state = scoreState(score).key;
@@ -47,7 +30,8 @@ async function sendOverlayUpdateToTab(tabId, payload) {
  * ✅ Atualiza score/ícone/overlay SEMPRE localmente (instantâneo)
  */
 async function analyzeLocal(url) {
-  const classification = classificarLocal(url);
+  const classification = classifyUrl(url);
+  if (!classification) throw new Error("URL inválida");
   const label = classification.category;
   const peso = categoryWeights[label];
 
@@ -73,7 +57,7 @@ async function analyzeLocal(url) {
     score,
     category: label, // A/B/C/D
     summary,
-    domain: normalizeDomain(url),
+    domain: classification.hostname,
     historico: next,
     methodologyVersion: methodVersion,
   };
@@ -131,7 +115,7 @@ async function applyPayloadToUI(tabId, payload, overlayAtivo) {
 }
 
 async function processUrlForTab(tabId, url) {
-  if (!url || !url.startsWith("http")) return;
+  if (!url || !classifyUrl(url)) return;
 
   // evita reprocessar mesma url
   const { lastUrl } = await chrome.storage.local.get(["lastUrl"]);
