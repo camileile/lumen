@@ -53,8 +53,13 @@ Backend (`lumen-backend/.env`):
 | --- | --- | --- |
 | `PORT` | API port | `3000` |
 | `CORS_ORIGIN` | Allowed web origin | `http://localhost:3001` |
+| `REQUEST_BODY_LIMIT` | Maximum JSON body size | `16kb` |
+| `TRUST_PROXY_HOPS` | Trusted reverse-proxy hops; unset for direct local use | unset |
 | `DATABASE_URL` | Prisma SQLite connection | `file:./prisma/dev.db` |
-| `JWT_SECRET` | JWT signing secret | Generate a private random value |
+| `JWT_SECRET` | JWT signing secret (at least 32 bytes) | Generate a private random value |
+| `JWT_ISSUER` / `JWT_AUDIENCE` | Access-token contract | `lumen-api` / `lumen-web-extension` |
+| `RATE_LIMIT_*` | Register/login/analyze maxima and windows | See `.env.example` |
+| `ANALYZE_DUPLICATE_WINDOW_SECONDS` | Same-user duplicate suppression | `30` |
 | `OPENROUTER_API_KEY` | Optional OpenRouter credential | Obtain your own key |
 | `OPENROUTER_BASE_URL` | OpenRouter API base | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_SITE_URL` | Application URL sent to OpenRouter | `http://localhost:3001` |

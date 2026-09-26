@@ -1,41 +1,53 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import prisma from "../db/prisma";
+import { AppError } from "../security/app-error";
+import { signAccessToken } from "../security/jwt";
+import { SAFE_USER_SELECT, safeUserProjection } from "../security/safe-user";
 
-// ALTERAÇÃO AQUI: Passando o userId direto no objeto do payload
-function signToken(userId: string) {
-  const secret = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET não configurado");
-  
-  // Agora o token carrega { userId: "..." }
-  return jwt.sign({ userId }, secret, { expiresIn: "7d" });
+type UserWithPassword = {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  createdAt: Date | string;
+};
+
+async function findUserByEmail(email: string): Promise<UserWithPassword | null> {
+  const users = await prisma.$queryRaw<UserWithPassword[]>`
+    SELECT "id", "name", "email", "password", "createdAt"
+    FROM "User"
+    WHERE lower("email") = lower(${email})
+    LIMIT 1
+  `;
+  return users[0] ?? null;
 }
 
 export async function register(name: string, email: string, password: string) {
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) throw new Error("E-mail já cadastrado");
+  const normalizedEmail = email.toLowerCase();
+  const existing = await findUserByEmail(normalizedEmail);
+  if (existing) throw new AppError(409, "EMAIL_ALREADY_REGISTERED", "E-mail já cadastrado");
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   const user = await prisma.user.create({
-    data: { name, email, password: passwordHash },
-    select: { id: true, name: true, email: true, createdAt: true },
+    data: { name, email: normalizedEmail, password: passwordHash },
+    select: SAFE_USER_SELECT,
   });
 
-  return { user, token: signToken(user.id) };
+  return { user, token: signAccessToken(user.id) };
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error("Credenciais inválidas");
+  const user = await findUserByEmail(email);
+  if (!user) throw new AppError(401, "INVALID_CREDENTIALS", "Credenciais inválidas");
 
   const ok = await bcrypt.compare(password, user.password);
-  if (!ok) throw new Error("Credenciais inválidas");
+  if (!ok) throw new AppError(401, "INVALID_CREDENTIALS", "Credenciais inválidas");
 
-  const token = signToken(user.id);
+  const token = signAccessToken(user.id);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+    user: safeUserProjection({ ...user, createdAt: new Date(user.createdAt) }),
     token,
   };
 }
@@ -43,8 +55,8 @@ export async function login(email: string, password: string) {
 export async function me(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, createdAt: true },
+    select: SAFE_USER_SELECT,
   });
-  if (!user) throw new Error("Usuário não encontrado");
+  if (!user) throw new AppError(404, "USER_NOT_FOUND", "Usuário não encontrado");
   return user;
 }
