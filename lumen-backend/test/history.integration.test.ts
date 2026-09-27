@@ -57,6 +57,8 @@ test("returns an honest empty state for zero observations", async () => {
     score: number | null;
     weeklyAverage: number | null;
     scoreHistory: unknown[];
+    weeklyAverages: unknown[];
+    trend: { direction: string };
   };
 
   assert.equal(response.status, 200);
@@ -64,6 +66,8 @@ test("returns an honest empty state for zero observations", async () => {
   assert.equal(body.score, null);
   assert.equal(body.weeklyAverage, null);
   assert.deepEqual(body.scoreHistory, []);
+  assert.deepEqual(body.weeklyAverages, []);
+  assert.equal(body.trend.direction, "insufficient");
 });
 
 test("derives one real point from one observation instead of persisted score", async () => {
@@ -121,6 +125,8 @@ test("returns real UTC dates, distribution, current score, and seven-day average
     weeklyAverage: number;
     scoreHistory: Array<{ date: string; value: number }>;
     methodology: { version: string; observationWindow: number };
+    weeklyAverages: Array<{ week: string; value: number; observedDays: number }>;
+    trend: { direction: string; delta: number | null };
   };
 
   assert.equal(response.status, 200);
@@ -137,6 +143,16 @@ test("returns real UTC dates, distribution, current score, and seven-day average
     { date: "2026-09-08", value: 58 },
   ]);
   assert.equal(body.weeklyAverage, 73);
+  assert.deepEqual(body.weeklyAverages.map(({ week, value, observedDays }) => ({ week, value, observedDays })), [
+    { week: "2026-W36", value: 94, observedDays: 2 },
+    { week: "2026-W37", value: 58, observedDays: 1 },
+  ]);
+  assert.deepEqual(body.trend, {
+    direction: "down",
+    delta: -36,
+    currentAverage: 58,
+    previousAverage: 94,
+  });
   assert.equal(body.methodology.version, "rolling-weight-v1");
   assert.equal(body.methodology.observationWindow, 20);
   assert.doesNotMatch(JSON.stringify(body), /password|hash|"token"/i);
