@@ -14,6 +14,7 @@ const TEST_PROVIDER_BASE_URL = "https://openrouter.test/api/v1";
 export type ApiResponse = {
   status: number;
   body: unknown;
+  headers: Headers;
 };
 
 export type TestApi = {
@@ -61,7 +62,10 @@ async function createSchema(prisma: PrismaClient): Promise<void> {
   `);
 }
 
-export async function createTestApi(suiteName: string): Promise<TestApi> {
+export async function createTestApi(
+  suiteName: string,
+  options: { registerLimit?: number; loginLimit?: number; analyzeLimit?: number } = {},
+): Promise<TestApi> {
   const directory = mkdtempSync(path.join(tmpdir(), `lumen-${suiteName}-`));
   const databasePath = path.join(directory, "test.db");
 
@@ -70,6 +74,10 @@ export async function createTestApi(suiteName: string): Promise<TestApi> {
   process.env.OPENROUTER_API_KEY = "test-only-openrouter-key";
   process.env.OPENROUTER_BASE_URL = TEST_PROVIDER_BASE_URL;
   process.env.CORS_ORIGIN = "http://localhost:3001";
+  process.env.RATE_LIMIT_REGISTER_MAX = String(options.registerLimit ?? 1000);
+  process.env.RATE_LIMIT_LOGIN_MAX = String(options.loginLimit ?? 1000);
+  process.env.RATE_LIMIT_ANALYZE_MAX = String(options.analyzeLimit ?? 1000);
+  process.env.ANALYZE_DUPLICATE_WINDOW_SECONDS = "30";
 
   const prisma = (loadModule("../../src/db/prisma") as { default: PrismaClient }).default;
   await createSchema(prisma);
@@ -85,7 +93,7 @@ export async function createTestApi(suiteName: string): Promise<TestApi> {
   async function request(route: string, init?: RequestInit): Promise<ApiResponse> {
     const response = await nativeFetch(`${baseUrl}${route}`, init);
     const body: unknown = await response.json().catch(() => ({}));
-    return { status: response.status, body };
+    return { status: response.status, body, headers: response.headers };
   }
 
   function restoreFetch() {

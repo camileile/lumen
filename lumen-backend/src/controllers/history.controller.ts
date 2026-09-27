@@ -55,7 +55,6 @@ function userFacingSummary(score: number | null, counts: Record<Category, number
 }
 
 export async function getHistory(req: AuthedRequest, res: Response) {
-  try {
     if (!req.userId) {
       return res.status(401).json({ error: "Não autenticado" });
     }
@@ -65,6 +64,15 @@ export async function getHistory(req: AuthedRequest, res: Response) {
         where: { userId: req.userId },
         orderBy: { createdAt: "desc" },
         take: 50,
+        select: {
+          id: true,
+          url: true,
+          domain: true,
+          category: true,
+          score: true,
+          summary: true,
+          createdAt: true,
+        },
       }),
       prisma.analysis.findMany({
         where: { userId: req.userId },
@@ -96,10 +104,4 @@ export async function getHistory(req: AuthedRequest, res: Response) {
         basis: "source-domain-category-history",
       },
     });
-  } catch (error: unknown) {
-    console.error(error);
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : "Erro ao buscar histórico",
-    });
-  }
 }

@@ -1,8 +1,30 @@
-// 1) Recebe token do dashboard (web) e salva na extensão
-window.addEventListener("message", (event) => {
-  if (event.source !== window) return;
-  if (event.data?.type === "LUMEN_CONNECT" && event.data?.token) {
-    chrome.runtime.sendMessage({ type: "SET_TOKEN", token: event.data.token });
+// O token só é aceito no dashboard autorizado e após um desafio descartável da extensão.
+window.addEventListener("message", async (event) => {
+  if (event.source !== window || !LumenHandshakePolicy.isTrustedOrigin(event.origin)) return;
+
+  if (event.data?.type === "LUMEN_CONNECT_REQUEST" && LumenHandshakePolicy.isValidNonce(event.data.requestId)) {
+    const response = await chrome.runtime.sendMessage({ type: "CREATE_CONNECT_CHALLENGE" });
+    if (!response?.ok || !LumenHandshakePolicy.isValidNonce(response.challenge)) return;
+    window.postMessage(
+      { type: "LUMEN_CONNECT_CHALLENGE", requestId: event.data.requestId, challenge: response.challenge },
+      LumenHandshakePolicy.trustedDashboardOrigin,
+    );
+    return;
+  }
+
+  if (event.data?.type === "LUMEN_CONNECT_COMMIT") {
+    if (!LumenHandshakePolicy.isValidNonce(event.data.requestId) ||
+        !LumenHandshakePolicy.isValidNonce(event.data.challenge) ||
+        !LumenHandshakePolicy.isValidToken(event.data.token)) return;
+    const response = await chrome.runtime.sendMessage({
+      type: "SET_TOKEN",
+      challenge: event.data.challenge,
+      token: event.data.token,
+    });
+    window.postMessage(
+      { type: "LUMEN_CONNECT_RESULT", requestId: event.data.requestId, ok: response?.ok === true },
+      LumenHandshakePolicy.trustedDashboardOrigin,
+    );
   }
 });
 

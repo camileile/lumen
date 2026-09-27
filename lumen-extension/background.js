@@ -1,10 +1,20 @@
-importScripts("score-contract.js", "domain-classifier.js");
+importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js");
 
 const API_URL = "http://localhost:3000";
 
 const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, methodVersion } =
   LumenScoreContract;
 const { classifyUrl } = LumenDomainClassifier;
+const { createChallengeRegistry, isTrustedOrigin, isValidToken } = LumenHandshakePolicy;
+const connectChallenges = createChallengeRegistry();
+
+function senderOrigin(sender) {
+  try {
+    return new URL(sender?.url ?? "").origin;
+  } catch {
+    return "";
+  }
+}
 
 async function setIconByScore(score) {
   const state = scoreState(score).key;
@@ -115,16 +125,17 @@ async function applyPayloadToUI(tabId, payload, overlayAtivo) {
 }
 
 async function processUrlForTab(tabId, url) {
-  if (!url || !classifyUrl(url)) return;
+  const sanitizedUrl = LumenPrivacyUrl.sanitizeForAnalysis(url);
+  if (!sanitizedUrl || !classifyUrl(sanitizedUrl)) return;
 
   // evita reprocessar mesma url
   const { lastUrl } = await chrome.storage.local.get(["lastUrl"]);
-  if (lastUrl === url) return;
+  if (lastUrl === sanitizedUrl) return;
 
   const { overlayAtivo = true } = await chrome.storage.local.get(["overlayAtivo"]);
 
   // 1) LOCAL (instantâneo)
-  const local = await analyzeLocal(url);
+  const local = await analyzeLocal(sanitizedUrl);
 
   let payload = {
     score: local.score,
@@ -132,7 +143,7 @@ async function processUrlForTab(tabId, url) {
     summary: local.summary,
     domain: local.domain,
     historico: local.historico,
-    lastUrl: url,
+    lastUrl: sanitizedUrl,
     lastMode: local.mode, // "local"
     lastUpdatedAt: Date.now(),
   };
@@ -141,12 +152,12 @@ async function processUrlForTab(tabId, url) {
 
   // 2) REMOTO (final) -> se der certo, sobrescreve score/category/summary/mode
   try {
-    const remote = await analyzeRemote(url);
+    const remote = await analyzeRemote(sanitizedUrl);
 
     // evita race condition: se o usuário já mudou de site enquanto a IA respondia,
     // não atualiza com resultado velho
     const { lastUrl: currentLastUrl } = await chrome.storage.local.get(["lastUrl"]);
-    if (currentLastUrl && currentLastUrl !== url) return;
+    if (currentLastUrl && currentLastUrl !== sanitizedUrl) return;
 
     payload = {
       ...payload,
@@ -160,9 +171,9 @@ async function processUrlForTab(tabId, url) {
     };
 
     await applyPayloadToUI(tabId, payload, overlayAtivo);
-  } catch (e) {
+  } catch {
     // backend offline/sem token/erro IA -> mantém local
-    console.warn("Remote analyze falhou, mantendo local:", String(e));
+    console.warn("Remote analyze indisponível; mantendo resultado local.");
   }
 }
 
@@ -180,7 +191,21 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 // recebe token do site (Conectar extensão) e comandos do popup
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
+    if (msg.type === "CREATE_CONNECT_CHALLENGE") {
+      const origin = senderOrigin(sender);
+      if (!isTrustedOrigin(origin)) return sendResponse({ ok: false, error: "Origin not allowed" });
+      const challenge = crypto.randomUUID().replaceAll("-", "");
+      connectChallenges.issue(origin, challenge);
+      sendResponse({ ok: true, challenge });
+      return;
+    }
+
     if (msg.type === "SET_TOKEN") {
+      const origin = senderOrigin(sender);
+      if (!isTrustedOrigin(origin) || !connectChallenges.consume(origin, msg.challenge)) {
+        return sendResponse({ ok: false, error: "Invalid or expired challenge" });
+      }
+      if (!isValidToken(msg.token)) return sendResponse({ ok: false, error: "Invalid token" });
       await chrome.storage.local.set({ lumen_token: msg.token });
       sendResponse({ ok: true });
       return;

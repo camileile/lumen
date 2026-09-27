@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { Category, normalizeCategory } from "../domain/score";
+import { AppError } from "../security/app-error";
 
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 
@@ -13,10 +14,11 @@ export type ORResult = {
 };
 
 type OpenRouterResponse = {
-  error?: { message?: unknown };
   choices?: Array<{ message?: { content?: unknown } }>;
   model?: unknown;
 };
+
+const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -41,13 +43,43 @@ function tryParseJson(text: string): Record<string, unknown> | null {
   return null;
 }
 
+async function readProviderJson(response: Response): Promise<OpenRouterResponse> {
+  const declaredLength = Number(response.headers.get("content-length") ?? 0);
+  if (declaredLength > MAX_PROVIDER_RESPONSE_BYTES) {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) return {};
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_PROVIDER_RESPONSE_BYTES) {
+      await reader.cancel();
+      throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+    }
+    chunks.push(value);
+  }
+
+  try {
+    const text = new TextDecoder().decode(Buffer.concat(chunks));
+    const parsed: unknown = JSON.parse(text);
+    return isRecord(parsed) ? parsed as OpenRouterResponse : {};
+  } catch {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+}
+
 // Free Models Router (muda ao longo do tempo)
 const DEFAULT_MODEL = "openrouter/free";
 
 export async function openrouterAnalyze(input: { url: string; domain: string }): Promise<ORResult> {
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
   const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new Error("OPENROUTER_API_KEY não configurado");
+  if (!apiKey) throw new AppError(503, "PROVIDER_UNAVAILABLE", "Serviço de análise indisponível");
 
   const messages: Msg[] = [
     {
@@ -94,30 +126,36 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
     }),
   }).finally(() => clearTimeout(timer));
 
-  const data: OpenRouterResponse = await res.json().catch(() => ({}));
+  const data = await readProviderJson(res);
   if (!res.ok) {
-    const msg =
-      typeof data.error?.message === "string"
-        ? data.error.message
-        : `OpenRouter HTTP ${res.status}`;
-    throw new Error(`OPENROUTER_ERROR: ${msg}`);
+    throw new AppError(502, "PROVIDER_REQUEST_FAILED", "Serviço de análise indisponível");
   }
 
   const responseContent = data.choices?.[0]?.message?.content;
-  const content = typeof responseContent === "string" ? responseContent : "{}";
-  const parsed = tryParseJson(content) ?? {};
+  if (typeof responseContent !== "string" || responseContent.length > 8_192) {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+  const parsed = tryParseJson(responseContent);
+  if (!parsed) throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
 
   // aceita A/B/C/D ou legacy e mapeia
-  const rawCat = String(parsed.category ?? "B").trim();
+  const rawCat = typeof parsed.category === "string" ? parsed.category.trim() : "";
   const normalizedCategory = normalizeCategory(rawCat);
-  const category: ORCategory = normalizedCategory ?? "B";
+  if (!normalizedCategory) {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+  const category: ORCategory = normalizedCategory;
 
-  const scoreNum = Number(parsed.score ?? 50);
-  const score = Number.isFinite(scoreNum) ? Math.max(0, Math.min(100, Math.round(scoreNum))) : 50;
+  const scoreNum = parsed.score;
+  if (typeof scoreNum !== "number" || !Number.isFinite(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+  const score = Math.round(scoreNum);
 
-  const summary =
-    String(parsed.summary ?? "").slice(0, 500) ||
-    (normalizedCategory ? "Sem resumo." : "Evidência insuficiente para classificar a fonte.");
+  if (typeof parsed.summary !== "string" || !parsed.summary.trim()) {
+    throw new AppError(502, "PROVIDER_INVALID_RESPONSE", "Serviço de análise indisponível");
+  }
+  const summary = parsed.summary.trim().slice(0, 500);
 
   return {
     category,
