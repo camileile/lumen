@@ -4,6 +4,22 @@ const toggleBtn = document.getElementById("toggleOverlay");
 const lumeImg = document.getElementById("lume");
 const modeEl = document.getElementById("mode");
 const domainEl = document.getElementById("domain");
+const accountStatusEl = document.getElementById("accountStatus");
+const accountIdentityEl = document.getElementById("accountIdentity");
+const connectAccountBtn = document.getElementById("connectAccount");
+const logoutAccountBtn = document.getElementById("logoutAccount");
+
+function renderAccount(status) {
+  const connected = status?.ok && status.connected;
+  accountStatusEl.innerText = connected ? "Conectado como" : "Não conectado";
+  accountIdentityEl.innerText = connected ? (status.user?.email || status.user?.name || "Conta Lumen") : "";
+  connectAccountBtn.hidden = connected;
+  logoutAccountBtn.hidden = !connected;
+}
+
+async function refreshAccount() {
+  renderAccount(await chrome.runtime.sendMessage({ type: "GET_ACCOUNT_STATUS" }).catch(() => ({ ok: false })));
+}
 
 function modeLabel(mode) {
   if (mode === "ai") return "IA (backend)";
@@ -60,7 +76,27 @@ function readState() {
 
   const ativo = st.overlayAtivo ?? true;
   toggleBtn.innerText = ativo ? "Desativar Overlay" : "Ativar Overlay";
+  await refreshAccount();
 })();
+
+connectAccountBtn.addEventListener("click", async () => {
+  connectAccountBtn.disabled = true;
+  connectAccountBtn.innerText = "Abrindo Lumen…";
+  const result = await chrome.runtime.sendMessage({ type: "START_ACCOUNT_CONNECTION" }).catch(() => ({ ok: false }));
+  if (result?.ok) window.close();
+  else {
+    connectAccountBtn.disabled = false;
+    connectAccountBtn.innerText = "Entrar com Lumen";
+    accountStatusEl.innerText = "Não foi possível iniciar a conexão";
+  }
+});
+
+logoutAccountBtn.addEventListener("click", async () => {
+  logoutAccountBtn.disabled = true;
+  await chrome.runtime.sendMessage({ type: "LOGOUT_EXTENSION" });
+  logoutAccountBtn.disabled = false;
+  await refreshAccount();
+});
 
 toggleBtn.addEventListener("click", () => {
   chrome.storage.local.get(["overlayAtivo"], async (result) => {

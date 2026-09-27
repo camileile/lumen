@@ -1,12 +1,16 @@
-importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js");
+importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js", "extension-auth.js");
 
 const API_URL = "http://localhost:3000";
 
 const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, methodVersion } =
   LumenScoreContract;
 const { classifyUrl } = LumenDomainClassifier;
-const { createChallengeRegistry, isTrustedOrigin, isValidToken } = LumenHandshakePolicy;
+const { createChallengeRegistry, isTrustedDashboardUrl } = LumenHandshakePolicy;
 const connectChallenges = createChallengeRegistry();
+
+function isExtensionSender(sender) {
+  return sender?.id === chrome.runtime.id && String(sender?.url || "").startsWith(`chrome-extension://${chrome.runtime.id}/`);
+}
 
 function senderOrigin(sender) {
   try {
@@ -78,14 +82,14 @@ async function analyzeLocal(url) {
  * Também serve pra salvar no banco pro dashboard, já que o controller salva.
  */
 async function analyzeRemote(url) {
-  const { lumen_token } = await chrome.storage.local.get(["lumen_token"]);
-  if (!lumen_token) throw new Error("Sem token");
+  const session = await LumenExtensionAuth.readSession(chrome.storage.local);
+  if (!session.connected) throw new Error("Sem sessão da extensão");
 
   const res = await fetch(`${API_URL}/analyze`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${lumen_token}`,
+      Authorization: `Bearer ${session.token}`,
     },
     body: JSON.stringify({ url }),
   });
@@ -188,26 +192,106 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url) processUrlForTab(tabId, changeInfo.url);
 });
 
-// recebe token do site (Conectar extensão) e comandos do popup
+async function startAccountConnection() {
+  const installationId = await LumenExtensionAuth.ensureInstallationId(chrome.storage.local);
+  const pending = await LumenExtensionAuth.createPendingConnection(chrome.storage.session, installationId);
+  const query = new URLSearchParams({
+    requestId: pending.requestId,
+    installationId: pending.installationId,
+    codeChallenge: pending.codeChallenge,
+  });
+  await chrome.tabs.create({ url: `${LumenHandshakePolicy.trustedDashboardOrigin}/extension/connect?${query}` });
+  return { ok: true };
+}
+
+function isTrustedPageSender(sender, pathname) {
+  return isTrustedDashboardUrl(sender?.url ?? "", pathname);
+}
+
+async function accountStatus() {
+  const session = await LumenExtensionAuth.readSession(chrome.storage.local);
+  if (!session.connected) return { ok: true, connected: false };
+  return { ok: true, connected: true, user: session.user, expiresAt: session.expiresAt };
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
-    if (msg.type === "CREATE_CONNECT_CHALLENGE") {
+    if (msg.type === "START_ACCOUNT_CONNECTION") {
+      if (!isExtensionSender(sender) && !isTrustedPageSender(sender, "/dashboard")) {
+        return sendResponse({ ok: false, error: "Invalid sender" });
+      }
+      sendResponse(await startAccountConnection());
+      return;
+    }
+
+    if (msg.type === "GET_ACCOUNT_STATUS") {
+      if (!isExtensionSender(sender) && !isTrustedPageSender(sender, "/dashboard")) {
+        return sendResponse({ ok: false, error: "Invalid sender" });
+      }
+      sendResponse(await accountStatus());
+      return;
+    }
+
+    if (msg.type === "LOGOUT_EXTENSION") {
+      if (!isExtensionSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
+      await LumenExtensionAuth.clearSession(chrome.storage.local, chrome.storage.session);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (msg.type === "PREPARE_EXTENSION_AUTH") {
       const origin = senderOrigin(sender);
-      if (!isTrustedOrigin(origin)) return sendResponse({ ok: false, error: "Origin not allowed" });
+      if (!isTrustedPageSender(sender, "/extension/connect")) return sendResponse({ ok: false, error: "Origin not allowed" });
+      const stored = await chrome.storage.session.get([LumenExtensionAuth.keys.pending]);
+      const pending = stored[LumenExtensionAuth.keys.pending];
+      if (!pending || pending.requestId !== msg.requestId || pending.installationId !== msg.installationId ||
+          pending.codeChallenge !== msg.codeChallenge || Date.now() - pending.createdAt > 2 * 60 * 1000) {
+        await chrome.storage.session.remove([LumenExtensionAuth.keys.pending]);
+        return sendResponse({ ok: false, error: "Authorization request mismatch" });
+      }
       const challenge = crypto.randomUUID().replaceAll("-", "");
-      connectChallenges.issue(origin, challenge);
+      const context = { requestId: msg.requestId, installationId: msg.installationId, codeChallenge: msg.codeChallenge };
+      if (!connectChallenges.issue(origin, challenge, context)) {
+        return sendResponse({ ok: false, error: "Invalid authorization request" });
+      }
       sendResponse({ ok: true, challenge });
       return;
     }
 
-    if (msg.type === "SET_TOKEN") {
+    if (msg.type === "COMPLETE_EXTENSION_AUTH") {
       const origin = senderOrigin(sender);
-      if (!isTrustedOrigin(origin) || !connectChallenges.consume(origin, msg.challenge)) {
+      const context = { requestId: msg.requestId, installationId: msg.installationId, codeChallenge: msg.codeChallenge };
+      if (!isTrustedPageSender(sender, "/extension/connect") || !connectChallenges.consume(origin, msg.challenge, context)) {
         return sendResponse({ ok: false, error: "Invalid or expired challenge" });
       }
-      if (!isValidToken(msg.token)) return sendResponse({ ok: false, error: "Invalid token" });
-      await chrome.storage.local.set({ lumen_token: msg.token });
-      sendResponse({ ok: true });
+      const stored = await chrome.storage.session.get([LumenExtensionAuth.keys.pending]);
+      const pending = stored[LumenExtensionAuth.keys.pending];
+      if (!pending || pending.requestId !== msg.requestId || pending.installationId !== msg.installationId ||
+          pending.codeChallenge !== msg.codeChallenge || Date.now() - pending.createdAt > 2 * 60 * 1000) {
+        await chrome.storage.session.remove([LumenExtensionAuth.keys.pending]);
+        return sendResponse({ ok: false, error: "Authorization request mismatch" });
+      }
+
+      const response = await fetch(`${API_URL}/extension/session/exchange`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: msg.authorizationCode,
+          installationId: pending.installationId,
+          codeVerifier: pending.verifier,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || typeof data?.token !== "string" || !data?.user) {
+        return sendResponse({ ok: false, error: "Authorization exchange failed" });
+      }
+      await LumenExtensionAuth.storeSession(chrome.storage.local, {
+        token: data.token,
+        user: data.user,
+        expiresAt: Date.now() + Number(data.expiresInSeconds || 0) * 1000,
+      });
+      await chrome.storage.session.remove([LumenExtensionAuth.keys.pending]);
+      sendResponse({ ok: true, user: data.user });
       return;
     }
 
@@ -223,7 +307,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     sendResponse({ ok: false, error: "Unknown msg" });
-  })();
+  })().catch(() => sendResponse({ ok: false, error: "Extension operation failed" }));
 
   return true;
 });

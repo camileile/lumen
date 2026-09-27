@@ -94,3 +94,15 @@ export const analyzeRateLimit = createRateLimiter({
   windowMs: positiveInteger("RATE_LIMIT_ANALYZE_WINDOW_SECONDS", 60) * 1000,
   key: (req) => `${(req as Request & { userId?: string }).userId ?? "anonymous"}:${ipKey(req)}`,
 });
+
+export const extensionAuthorizeRateLimit = createRateLimiter({
+  max: positiveInteger("RATE_LIMIT_EXTENSION_AUTHORIZE_MAX", 10),
+  windowMs: positiveInteger("RATE_LIMIT_EXTENSION_AUTHORIZE_WINDOW_SECONDS", 300) * 1000,
+  key: (req) => `${(req as Request & { userId?: string }).userId ?? "anonymous"}:${ipKey(req)}`,
+});
+
+export const extensionExchangeRateLimit = createRateLimiter({
+  max: positiveInteger("RATE_LIMIT_EXTENSION_EXCHANGE_MAX", 20),
+  windowMs: positiveInteger("RATE_LIMIT_EXTENSION_EXCHANGE_WINDOW_SECONDS", 300) * 1000,
+  key: ipKey,
+});

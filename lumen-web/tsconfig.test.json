@@ -14,6 +14,7 @@
   "include": [
     "src/app/lib/api.ts",
     "src/app/lib/dashboardData.ts",
+    "src/app/lib/extensionAuth.ts",
     "src/app/lib/ui.ts",
     "src/app/lib/site-navigation.ts",
     "src/app/lib/types.ts",

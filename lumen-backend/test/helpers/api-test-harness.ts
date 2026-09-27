@@ -64,7 +64,13 @@ async function createSchema(prisma: PrismaClient): Promise<void> {
 
 export async function createTestApi(
   suiteName: string,
-  options: { registerLimit?: number; loginLimit?: number; analyzeLimit?: number } = {},
+  options: {
+    registerLimit?: number;
+    loginLimit?: number;
+    analyzeLimit?: number;
+    extensionAuthorizeLimit?: number;
+    extensionExchangeLimit?: number;
+  } = {},
 ): Promise<TestApi> {
   const directory = mkdtempSync(path.join(tmpdir(), `lumen-${suiteName}-`));
   const databasePath = path.join(directory, "test.db");
@@ -77,6 +83,8 @@ export async function createTestApi(
   process.env.RATE_LIMIT_REGISTER_MAX = String(options.registerLimit ?? 1000);
   process.env.RATE_LIMIT_LOGIN_MAX = String(options.loginLimit ?? 1000);
   process.env.RATE_LIMIT_ANALYZE_MAX = String(options.analyzeLimit ?? 1000);
+  process.env.RATE_LIMIT_EXTENSION_AUTHORIZE_MAX = String(options.extensionAuthorizeLimit ?? 1000);
+  process.env.RATE_LIMIT_EXTENSION_EXCHANGE_MAX = String(options.extensionExchangeLimit ?? 1000);
   process.env.ANALYZE_DUPLICATE_WINDOW_SECONDS = "30";
 
   const prisma = (loadModule("../../src/db/prisma") as { default: PrismaClient }).default;
