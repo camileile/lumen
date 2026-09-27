@@ -70,6 +70,6 @@ test("maps the API distribution without reinterpreting its values", () => {
 });
 
 test("keeps the automated-estimate disclaimer explicit", () => {
-  assert.match(AUTOMATED_ESTIMATE_COPY, /Automated estimate/i);
-  assert.match(AUTOMATED_ESTIMATE_COPY, /Not a fact check/i);
+  assert.match(AUTOMATED_ESTIMATE_COPY, /Estimativa automatizada/i);
+  assert.match(AUTOMATED_ESTIMATE_COPY, /Não é uma checagem factual/i);
 });

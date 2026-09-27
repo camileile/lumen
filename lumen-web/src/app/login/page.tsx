@@ -1,30 +1,35 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { login,saveToken } from "@/app/lib/auth";
-import styles from "./login.module.css";
+import { AuthSubmitButton, FormAlert, PasswordField } from "@/app/components/auth-controls";
+import { login, saveToken } from "@/app/lib/auth";
+import styles from "@/app/components/auth.module.css";
 
 export default function LoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   
-  // Estados para os campos e erros
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(""); // Limpa erros anteriores
+    if (submitting) return;
+    setError("");
+    setSubmitting(true);
 
     try {
       const { token } = await login(email, password);
       saveToken(token);
-      router.push("/dashboard");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erro ao realizar login");
+      router.replace("/dashboard");
+    } catch {
+      setError("Não foi possível entrar. Verifique suas credenciais ou tente novamente em instantes.");
+      setSubmitting(false);
     }
   }
 
@@ -32,63 +37,58 @@ export default function LoginPage() {
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.brand}>
-          <img src="/logo-lumen.png" alt="Lumen" />
+          <Image src="/logo-lumen.png" alt="" width={28} height={28} />
           <strong>Lumen</strong>
         </div>
 
         <h1 className={styles.title}>Entrar</h1>
         <p className={styles.subtitle}>
-          Acesse seu histórico e análises.
+          Acesse seu histórico e suas estimativas automatizadas.
         </p>
 
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} aria-busy={submitting}>
           <div className={styles.field}>
-            <label className={styles.label}>Email</label>
+            <label className={styles.label} htmlFor="login-email">Email</label>
             <input
               className={styles.input}
+              id="login-email"
+              name="email"
               type="email"
-              placeholder="seuemail@gmail.com"
+              autoComplete="email"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              maxLength={254}
+              disabled={submitting}
               required
             />
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Senha</label>
-            <div className={styles.passwordWrap}>
-              <input
-                className={styles.input}
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className={styles.showBtn}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <PasswordField
+              id="login-password"
+              label="Senha"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              visible={showPassword}
+              disabled={submitting}
+              styles={styles}
+              onChange={setPassword}
+              onToggle={() => setShowPassword((visible) => !visible)}
+            />
           </div>
 
-          {error && <p style={{ color: "red", fontSize: "14px", marginBottom: "10px" }}>{error}</p>}
-
-          <button className={styles.primaryBtn} type="submit">
-            Entrar
-          </button>
-
-          <div className={styles.divider}>ou</div>
-
-          <button className={styles.secondaryBtn} type="button">
-            Entrar com Google
-          </button>
+          <FormAlert message={error} className={styles.error} />
+          <AuthSubmitButton
+            idleLabel="Entrar"
+            loadingLabel="Entrando…"
+            submitting={submitting}
+            className={styles.primaryBtn}
+          />
 
           <p className={styles.bottom}>
-            Não tem conta? <a href="/cadastro">Criar conta</a>
+            Não tem conta? <Link href="/cadastro">Criar conta</Link>
           </p>
         </form>
       </div>

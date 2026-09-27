@@ -15,8 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test:clean": "node -e \"require('node:fs').rmSync('.test-dist', { recursive: true, force: true })\"",
     "test:compile": "npm run test:clean && tsc -p tsconfig.test.json",
-    "test": "npm run test:compile && node --test .test-dist/test/dashboardData.test.js .test-dist/test/api.test.js",
-    "test:coverage": "npm run test:compile && node --experimental-test-coverage --test-coverage-include=.test-dist/src/app/lib/*.js --test .test-dist/test/dashboardData.test.js .test-dist/test/api.test.js"
+    "test": "npm run test:compile && node --test .test-dist/test/dashboardData.test.js .test-dist/test/api.test.js .test-dist/test/ui-accessibility.test.js .test-dist/test/ui-contracts.test.js",
+    "test:coverage": "npm run test:compile && node --experimental-test-coverage --test-coverage-include=.test-dist/src/app/lib/*.js --test .test-dist/test/dashboardData.test.js .test-dist/test/api.test.js .test-dist/test/ui-accessibility.test.js .test-dist/test/ui-contracts.test.js"
   },
   "dependencies": {
     "lucide-react": "^0.575.0",

@@ -1,289 +1,70 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { getToken } from "@/app/lib/auth";
+import { AUTOMATED_ESTIMATE_COPY } from "@/app/lib/dashboardData";
+import { DashboardHeader } from "./components/dashboard-header";
+import { DashboardError, DashboardLoading } from "./components/dashboard-states";
+import { DistributionCard } from "./components/distribution-card";
+import { HelpCard, HistorySummaryCard, RecentSources, WeeklyAverageCard } from "./components/history-cards";
+import { MascotCard } from "./components/mascot-card";
+import { ScoreCard } from "./components/score-card";
+import { TutorialDialog, type TourStep } from "./components/tutorial-dialog";
+import { useDashboardData } from "./use-dashboard-data";
 import styles from "./dashboard.module.css";
-
-import { getDashboardMock } from "../lib/dashboardMock";
-import { getHistory } from "../lib/history";
-import type { DashboardData } from "../lib/types";
-import {
-  AUTOMATED_ESTIMATE_COPY,
-  mapHistoryToDashboard,
-  NOT_ENOUGH_DATA_COPY,
-} from "../lib/dashboardData";
-
-import { getToken, clearToken, me, AuthUser } from "@/app/lib/auth";
-import { ChevronRight, X, User, Download, Settings, Trophy, Pencil } from "lucide-react";
-
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-} from "recharts";
-
-type TourStep = {
-  id: string;
-  title: string;
-  text: string;
-  anchor: "score" | "distribution" | "history" | "actions";
-};
 
 const TOUR_KEY = "lumen_dashboard_tour_done_v1";
 const NAME_KEY = "lumen_user_name_v1";
-const HAS_DATA_KEY = "lumen_has_data_v1";
-const DEMO_KEY = "lumen_demo_v1";
 
-function mascotByStatus(status: DashboardData["statusLabel"], firstTime: boolean) {
-  if (firstTime) return "/lume-amarelo.gif";
-  if (status === "Faixa alta") return "/lume-verde.gif";
-  if (status === "Faixa baixa") return "/lume-vermelho.gif";
-  return "/lume-amarelo.gif";
-}
-
-function xpText(xp: number) {
-  if (xp >= 80) return "Quase no próximo nível!";
-  if (xp >= 40) return "Evoluindo bem!";
-  return "Primeiros passos!";
-}
-
-function ScoreLine({
-  data,
-  showAxis = false,
-}: {
-  data: { day: string; value: number | null }[];
-  showAxis?: boolean;
-}) {
-  return (
-    <div style={{ height: "100%", width: "100%" }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: showAxis ? 25 : 5 }}>
-          <CartesianGrid strokeOpacity={0.12} vertical={false} />
-          <XAxis
-            dataKey="day"
-            hide={!showAxis}
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
-            interval={0}
-            dy={10}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "#1a1c23",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 10,
-              fontSize: "12px",
-              color: "#fff",
-            }}
-            itemStyle={{ color: "#78ffa0" }}
-          />
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke="#78ffa0"
-            strokeWidth={3}
-            dot={false}
-            connectNulls={false}
-            activeDot={{ r: 4, strokeWidth: 0 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-function WeeklyBars({ data }: { data: { day: string; value: number | null }[] }) {
-  const safe = data.map((d) => ({ ...d, value: d.value ?? 0 }));
-
-  return (
-    <div style={{ height: "100%", width: "100%" }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={safe} margin={{ top: 10, right: 5, left: 5, bottom: 25 }}>
-          <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-          <XAxis
-            dataKey="day"
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
-            interval={0}
-            dy={10}
-          />
-          <Tooltip
-            cursor={{ fill: "rgba(255,255,255,0.05)" }}
-            contentStyle={{
-              background: "#1a1c23",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 10,
-              color: "#fff",
-            }}
-          />
-          <Bar dataKey="value" fill="#78ffa0" radius={[4, 4, 0, 0]} barSize={20} opacity={0.8} />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
+const steps: TourStep[] = [
+  { id: "score", anchor: "score", title: "Estimativa informacional", text: `${AUTOMATED_ESTIMATE_COPY} O cálculo considera até 20 observações recentes.` },
+  { id: "distribution", anchor: "distribution", title: "Categorias A/B/C/D", text: "A categoria B também pode indicar fonte desconhecida ou evidência insuficiente. Cores são apenas apoio: letras e descrições carregam o significado." },
+  { id: "history", anchor: "history", title: "Histórico real", text: "Somente datas e fontes realmente observadas aparecem aqui. Lacunas não são preenchidas com valores inventados." },
+  { id: "help", anchor: "actions", title: "Ajuda e atualização", text: "Use o header para atualizar dados, conectar a extensão, visualizar o modo demo ou encerrar a sessão." },
+];
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-
-  const [demo, setDemo] = useState(true);
-  const [mounted, setMounted] = useState(false);
-
-useEffect(() => {
-  const saved = localStorage.getItem(DEMO_KEY);
-
-  if (saved === "0") {
-    setDemo(false);
-  } else if (saved === "1") {
-    setDemo(true);
-  } else {
-    setDemo(!getToken());
-  }
-
-  setMounted(true);
-}, []);
-
-  const [firstTime, setFirstTime] = useState(true);
-
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loadingDash, setLoadingDash] = useState(false);
-  const [dashError, setDashError] = useState<string>("");
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      window.location.href = "/login";
-      return;
-    }
-
-    me(token)
-      .then(({ user }) => setUser(user))
-      .catch(() => {
-        clearToken();
-        window.location.href = "/login";
-      });
-  }, []);
-
-  useEffect(() => {
-    const done = localStorage.getItem(HAS_DATA_KEY);
-    setFirstTime(!done);
-  }, []);
-
-  async function refreshDashboard() {
-    setLoadingDash(true);
-    setDashError("");
-
-    try {
-      const data = await getHistory();
-
-      const hasData = !!data?.items?.length;
-      localStorage.setItem(HAS_DATA_KEY, hasData ? "1" : "");
-      setFirstTime(!hasData);
-
-      setDashboardData(mapHistoryToDashboard(data));
-    } catch (e: unknown) {
-      setDashError(e instanceof Error ? e.message : "Falha ao carregar dashboard");
-      setDashboardData(null);
-    } finally {
-      setLoadingDash(false);
-    }
-  }
-
-  useEffect(() => {
-    if (demo) return;
-    const token = getToken();
-    if (!token) return;
-    refreshDashboard();
-  }, [demo]);
-
-  const data = useMemo(() => {
-    if (demo) return getDashboardMock(false);
-    return dashboardData ?? getDashboardMock(true);
-  }, [demo, dashboardData]);
-
+  const dashboard = useDashboardData();
   const [name, setName] = useState("Lumen");
-  const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState("Lumen");
-
-  useEffect(() => {
-    const saved = localStorage.getItem(NAME_KEY);
-    const initial =
-      (saved && saved.trim()) ||
-      user?.name ||
-      (data?.mascot?.name ? data.mascot.name : "Lumen");
-    setName(initial);
-    setDraftName(initial);
-  }, [data?.mascot?.name, user?.name]);
-
-  function startEditName() {
-    setDraftName(name);
-    setEditingName(true);
-  }
-
-  function cancelEditName() {
-    setDraftName(name);
-    setEditingName(false);
-  }
-
-  function saveName(next?: string) {
-    const finalName = (next ?? draftName).trim() || "Lumen";
-    setName(finalName);
-    setDraftName(finalName);
-    localStorage.setItem(NAME_KEY, finalName);
-    setEditingName(false);
-  }
-
+  const [editingName, setEditingName] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
-
-  const steps: TourStep[] = [
-    {
-      id: "s1",
-      anchor: "score",
-      title: "Seu Score Informacional",
-      text: `${AUTOMATED_ESTIMATE_COPY} Usa até 20 categorias recentes de fonte/domínio.`,
-    },
-    {
-      id: "s2",
-      anchor: "distribution",
-      title: "Distribuição A/B/C/D",
-      text: "Este gráfico mostra a frequência das categorias na mesma janela do score. B também pode significar fonte desconhecida ou evidência insuficiente.",
-    },
-    {
-      id: "s3",
-      anchor: "history",
-      title: "Últimos acessos",
-      text: "Seu histórico recente aparece aqui. Quando Demo OFF, vem do banco via API do backend.",
-    },
-    {
-      id: "s4",
-      anchor: "actions",
-      title: "Ações rápidas",
-      text: "Atalhos para configurações, exportar relatório e conquistas. Mais pra frente isso vira funcional de verdade.",
-    },
-  ];
+  const [connecting, setConnecting] = useState(false);
+  const [connectionMessage, setConnectionMessage] = useState("");
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
-    const done = localStorage.getItem(TOUR_KEY);
-    if (!done) setTourOpen(true);
-  }, []);
+    if (!dashboard.user) return;
+    const frame = window.requestAnimationFrame(() => {
+      const initial = localStorage.getItem(NAME_KEY)?.trim() || dashboard.user?.name || "Lumen";
+      setName(initial);
+      setDraftName(initial);
+      if (!localStorage.getItem(TOUR_KEY)) setTourOpen(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [dashboard.user]);
 
-  function finishTour() {
-    localStorage.setItem(TOUR_KEY, "1");
-    setTourOpen(false);
+  function saveName() {
+    const nextName = draftName.trim() || "Lumen";
+    setName(nextName);
+    setDraftName(nextName);
+    localStorage.setItem(NAME_KEY, nextName);
+    setEditingName(false);
   }
 
-  const current = steps[step];
+  function closeTour() {
+    localStorage.setItem(TOUR_KEY, "1");
+    setTourOpen(false);
+    setStep(0);
+  }
 
   async function connectExtension() {
     const token = getToken();
-    if (!token) return alert("Faça login primeiro.");
+    if (!token || connecting) return;
+    setConnecting(true);
+    setConnectionMessage("");
+    setConnectionError(false);
     const requestId = crypto.randomUUID().replaceAll("-", "");
 
     const connected = await new Promise<boolean>((resolve) => {
@@ -295,10 +76,7 @@ useEffect(() => {
       function onMessage(event: MessageEvent) {
         if (event.source !== window || event.origin !== window.location.origin || event.data?.requestId !== requestId) return;
         if (event.data?.type === "LUMEN_CONNECT_CHALLENGE" && typeof event.data.challenge === "string") {
-          window.postMessage(
-            { type: "LUMEN_CONNECT_COMMIT", requestId, challenge: event.data.challenge, token },
-            window.location.origin,
-          );
+          window.postMessage({ type: "LUMEN_CONNECT_COMMIT", requestId, challenge: event.data.challenge, token }, window.location.origin);
           return;
         }
         if (event.data?.type === "LUMEN_CONNECT_RESULT") {
@@ -312,336 +90,38 @@ useEffect(() => {
       window.postMessage({ type: "LUMEN_CONNECT_REQUEST", requestId }, window.location.origin);
     });
 
-    alert(connected
-      ? "Extensão conectada! Agora ela pode registrar análises no seu dashboard."
-      : "Não foi possível conectar a extensão. Verifique se ela está instalada e tente novamente.");
+    setConnecting(false);
+    setConnectionError(!connected);
+    setConnectionMessage(connected
+      ? "Extensão conectada. Novas análises autenticadas poderão aparecer no histórico."
+      : "Não foi possível conectar. Confirme que a extensão está instalada e tente novamente.");
   }
-if (!mounted) return null;
-  return (
-    <div className={styles.page}>
-      <header className={styles.topbar}>
-        <div className={styles.brand}>
-          <img src="/logo-lumen.png" alt="Lumen" />
-          <strong>Lumen</strong>
-        </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <button
-            type="button"
-            onClick={() => {
-              setDemo((d) => {
-                const next = !d;
-                localStorage.setItem(DEMO_KEY, next ? "1" : "0");
-                return next;
-              });
-            }}
-            className={styles.demoBtn}
-            title="Demo usa dados mock. OFF usa backend."
-          >
-            {demo ? "Modo Demo ON" : "Modo Demo OFF"}
-          </button>
+  if (!dashboard.ready || !dashboard.user) return <DashboardLoading />;
 
-          <button
-            type="button"
-            onClick={connectExtension}
-            className={styles.demoBtn}
-            title="Conecta a extensão ao dashboard com validação de origem"
-          >
-            Conectar extensão
-          </button>
+  return <div className={styles.page}>
+    <DashboardHeader user={dashboard.user} demo={dashboard.demo} loading={dashboard.loading} connecting={connecting}
+      onToggleDemo={() => dashboard.setDemoMode(!dashboard.demo)} onConnect={connectExtension}
+      onRefresh={() => void dashboard.refresh()} onLogout={dashboard.logout} />
 
-          <button
-            type="button"
-            onClick={() => refreshDashboard()}
-            className={styles.demoBtn}
-            disabled={demo || loadingDash}
-            title={demo ? "Desative o demo para carregar do backend" : "Recarregar dados do backend"}
-          >
-            {loadingDash ? "Atualizando..." : "Atualizar"}
-          </button>
+    {connectionMessage && <p className={connectionError ? styles.statusError : styles.statusSuccess}
+      role={connectionError ? "alert" : "status"} aria-live="polite">{connectionMessage}</p>}
 
-          <div className={styles.userArea}>
-            <button className={styles.userBtn} type="button">
-              <User size={18} />
-              <span>Conta</span>
-            </button>
-          </div>
-        </div>
-      </header>
+    {!dashboard.demo && dashboard.error && <DashboardError message={dashboard.error} onRetry={() => void dashboard.refresh()} />}
+    {!dashboard.demo && dashboard.loading && !dashboard.error && <DashboardLoading />}
 
-      {!demo && dashError && (
-        <div style={{ margin: "12px 0", color: "#ff6b6b" }}>
-          {dashError}
-        </div>
-      )}
+    {(dashboard.demo || dashboard.hasLoaded) && <main className={styles.grid} aria-busy={dashboard.loading}>
+      <MascotCard data={dashboard.data} demo={dashboard.demo} name={name} draftName={draftName} editingName={editingName}
+        onDraftName={setDraftName} onStartEdit={() => { setDraftName(name); setEditingName(true); }}
+        onCancelEdit={() => { setDraftName(name); setEditingName(false); }} onSaveName={saveName} />
+      <ScoreCard data={dashboard.data} />
+      <HistorySummaryCard data={dashboard.data} />
+      <DistributionCard distribution={dashboard.data.distribution} />
+      <WeeklyAverageCard data={dashboard.data} />
+      <RecentSources data={dashboard.data} />
+      <HelpCard onOpenTutorial={() => setTourOpen(true)} />
+    </main>}
 
-      <main className={styles.grid}>
-        <section className={`${styles.card} ${styles.avatarCard}`}>
-          <div className={styles.avatarTop}>
-            {!editingName ? (
-              <>
-                <span className={styles.userName}>{name}</span>
-                <button
-                  className={styles.iconBtn}
-                  type="button"
-                  onClick={startEditName}
-                  aria-label="Editar nome"
-                  title="Editar nome"
-                >
-                  <Pencil size={16} />
-                </button>
-              </>
-            ) : (
-              <>
-                <input
-                  className={styles.nameInput}
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  autoFocus
-                  onBlur={() => saveName()}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") saveName();
-                    if (e.key === "Escape") cancelEditName();
-                  }}
-                />
-                <button
-                  className={styles.iconBtn}
-                  type="button"
-                  onClick={() => saveName()}
-                  aria-label="Salvar nome"
-                  title="Salvar"
-                >
-                  OK
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className={styles.avatarBox}>
-            <img
-              src={mascotByStatus(data.statusLabel, firstTime)}
-              alt="Lumen"
-              className={styles.avatarImg}
-            />
-          </div>
-
-          <div className={styles.badge}>
-            {data.statusLabel}
-            {demo ? " • DEMO" : ""}
-          </div>
-
-          <div className={styles.xpWrap}>
-            <div className={styles.xpTop}>
-              <span className={styles.xpLabel}>XP</span>
-              <span className={styles.xpValue}>{data.xp}%</span>
-            </div>
-            <div className={styles.xpTrack}>
-              <div className={styles.xpFill} style={{ width: `${data.xp}%` }} />
-            </div>
-            <div className={styles.xpHint}>{xpText(data.xp)}</div>
-          </div>
-
-          <div className={styles.segment}>
-            <button className={styles.segmentBtn} type="button">
-              Base
-            </button>
-            <button className={`${styles.segmentBtn} ${styles.segmentActive}`} type="button">
-              Estável
-            </button>
-            <button className={styles.segmentBtn} type="button">
-              Evoluindo
-            </button>
-          </div>
-
-          <div className={styles.insight}>
-            <strong>Insight:</strong>
-            <p>{data.insight}</p>
-          </div>
-        </section>
-
-        <section className={`${styles.card} ${styles.scoreCard}`} data-anchor="score">
-          <div className={styles.scoreHeader}>
-            <h2>Estimativa informacional</h2>
-          </div>
-
-          <div className={styles.scoreContent}>
-            <div className={styles.chartMock} style={{ height: 180 }}>
-              {data.scoreSeries.length === 0 ? (
-                <div className={styles.chartEmpty}>
-                  <strong>{NOT_ENOUGH_DATA_COPY}</strong>
-                  <span>Faça sua primeira análise para gerar uma estimativa.</span>
-                </div>
-              ) : (
-                <ScoreLine data={data.scoreSeries} showAxis={true} />
-              )}
-            </div>
-
-            <div className={styles.scoreSide}>
-              <div className={styles.scoreValue}>{data.score ?? "—"}</div>
-              <div className={styles.scoreLabel}>{data.statusLabel}</div>
-              <div className={styles.scoreHint}>{data.statusHint}</div>
-            </div>
-          </div>
-        </section>
-
-        <section className={`${styles.card} ${styles.smallCard}`}>
-          <h3>{data.trend.title}</h3>
-          <p className={styles.smallSub}>{data.trend.subtitle}</p>
-
-          {data.weeklySeries.length === 0 ? (
-            <div className={styles.miniEmpty}>
-              <span>{NOT_ENOUGH_DATA_COPY}</span>
-            </div>
-          ) : (
-            <div className={styles.miniChart} style={{ height: 120 }}>
-              <ScoreLine data={data.weeklySeries} />
-            </div>
-          )}
-        </section>
-
-        <section className={`${styles.card} ${styles.smallCard}`} data-anchor="distribution">
-          <h3>Distribuição</h3>
-
-          {data.distribution.length === 0 ? (
-            <div className={styles.placeholderBox}>
-              <strong>Sem dados de distribuição</strong>
-              <p>Analise algumas URLs para ver como o Lumen classifica seu consumo.</p>
-            </div>
-          ) : (
-            <div className={styles.bars}>
-              {data.distribution.map((item) => (
-                <div key={item.label} className={styles.barRow}>
-                  <span style={{ fontSize: 12 }}>{item.label}</span>
-                  <div className={styles.barTrack}>
-                    <div
-                      className={`${styles.barFill} ${
-                        item.colorKey === "good"
-                          ? styles.bar_good
-                          : item.colorKey === "neutral"
-                          ? styles.bar_neutral
-                          : item.colorKey === "warn"
-                          ? styles.bar_warn
-                          : styles.bar_bad
-                      }`}
-                      style={{ width: `${item.value}%` }}
-                    />
-                  </div>
-                  <span style={{ textAlign: "right", fontSize: 12 }}>{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className={`${styles.card} ${styles.smallCard}`}>
-          <h3>Média dos dias com dados</h3>
-          <div className={styles.weekValue}>
-            <span>{data.weeklyAverage ?? "—"}</span>
-          </div>
-          {data.weeklySeries.length === 0 ? (
-            <div className={styles.miniEmpty}>
-              <span>{NOT_ENOUGH_DATA_COPY}</span>
-            </div>
-          ) : (
-            <div className={styles.miniChart2} style={{ height: 140 }}>
-              <WeeklyBars data={data.weeklySeries} />
-            </div>
-          )}
-        </section>
-
-        <section className={`${styles.card} ${styles.historyCard}`} data-anchor="history">
-          <h3>Últimos acessos</h3>
-
-          <div className={styles.historyList}>
-            {data.lastAccess.length === 0 ? (
-              <div className={styles.emptyBox}>
-                <strong>Nenhum acesso ainda</strong>
-                <p>Assim que você analisar sites, o Lumen vai registrar seu histórico aqui.</p>
-              </div>
-            ) : (
-              data.lastAccess.map((a) => (
-                <div key={a.id} className={styles.historyItem}>
-                  <div className={`${styles.letter} ${styles["letter_" + a.label]}`}>{a.label}</div>
-
-                  <div className={styles.historyText}>
-                    <div className={styles.historyUrl}>{a.url}</div>
-                  </div>
-
-                  <button className={styles.smallBtn} type="button">
-                    Ver sinais da fonte
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        <section className={`${styles.card} ${styles.actionsCard}`} data-anchor="actions">
-          <h3>Ações rápidas</h3>
-          <button className={styles.actionBtn} type="button">
-            <Trophy size={18} />
-            <span>Ver conquistas</span>
-            <ChevronRight size={18} className={styles.actionArrow} />
-          </button>
-          <button className={styles.actionBtn} type="button">
-            <Settings size={18} />
-            <span>Configurações</span>
-            <ChevronRight size={18} className={styles.actionArrow} />
-          </button>
-          <button className={styles.actionBtn} type="button">
-            <Download size={18} />
-            <span>Exportar relatório</span>
-            <ChevronRight size={18} className={styles.actionArrow} />
-          </button>
-          <button className={styles.tourBtn} type="button" onClick={() => setTourOpen(true)}>
-            Reabrir tutorial
-          </button>
-        </section>
-      </main>
-
-      {tourOpen && (
-        <div className={styles.tourOverlay}>
-          <div className={styles.tourCard}>
-            <button className={styles.tourClose} onClick={finishTour} aria-label="Fechar">
-              <X size={18} />
-            </button>
-
-            <div className={styles.tourTitle}>{current.title}</div>
-            <div className={styles.tourText}>{current.text}</div>
-
-            <div className={styles.tourFooter}>
-              <span className={styles.tourSteps}>
-                {step + 1} / {steps.length}
-              </span>
-
-              <div className={styles.tourBtns}>
-                <button
-                  className={styles.tourGhost}
-                  type="button"
-                  onClick={() => setStep((s) => Math.max(0, s - 1))}
-                  disabled={step === 0}
-                >
-                  Voltar
-                </button>
-
-                {step < steps.length - 1 ? (
-                  <button
-                    className={styles.tourPrimary}
-                    type="button"
-                    onClick={() => setStep((s) => Math.min(steps.length - 1, s + 1))}
-                  >
-                    Próximo
-                  </button>
-                ) : (
-                  <button className={styles.tourPrimary} type="button" onClick={finishTour}>
-                    Entendi
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    {tourOpen && <TutorialDialog step={step} steps={steps} styles={styles} onStep={setStep} onClose={closeTour} />}
+  </div>;
 }

@@ -355,7 +355,7 @@
 
 .historyItem {
   display: grid;
-  grid-template-columns: 26px 1fr 112px; /* Ajustado */
+  grid-template-columns: 26px minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   padding: 8px 10px;      /* Ajustado */
@@ -381,7 +381,7 @@
 
 .historyUrl {
   font-size: 12px;
-  color: rgba(255,255,255,0.75);
+  color: #e0e5f1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -765,4 +765,52 @@
 .historyUrl::-webkit-scrollbar-track{
   background: rgba(255,255,255,.06);
   border-radius: 999px;
+}
+
+/* Phase 5: focused component, accessibility, and responsive states */
+.topbarControls { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.userIdentity { color: #d8deed; font-size: 13px; }
+.logoutBtn { min-height: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); color: #fff; background: transparent; cursor: pointer; }
+.chartVisual { width: 100%; height: 100%; }
+.scoreDisclosure { margin: -4px 0 14px; color: #d8deed; font-size: 13px; line-height: 1.5; }
+.barValue { text-align: right; font-size: 12px; }
+.historyCategory { display: block; margin-bottom: 4px; color: #eef1f8; font-size: 12px; }
+.scoreDetails, .categoryDetails, .chartTableDetails { margin-top: 12px; color: #d8deed; font-size: 12px; }
+.scoreDetails summary, .categoryDetails summary, .chartTableDetails summary { cursor: pointer; color: #b8ccff; font-weight: 700; }
+.scoreDetails p { line-height: 1.55; }
+.categoryDetails ul { padding-left: 20px; line-height: 1.55; }
+.tableScroll { overflow-x: auto; margin-top: 8px; }
+.chartTable { width: 100%; border-collapse: collapse; min-width: 240px; }
+.chartTable caption { text-align: left; padding: 6px 0; color: #d8deed; }
+.chartTable th, .chartTable td { border-bottom: 1px solid rgba(255,255,255,.12); padding: 6px; text-align: left; }
+.demoBtn:disabled { cursor: not-allowed; opacity: .6; }
+.statePanel { width: min(1120px, 92%); margin: 14px auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; border: 1px solid rgba(143,176,255,.35); border-radius: 14px; background: rgba(16,25,53,.7); color: #e7ecff; }
+.statePanel span { color: #d8deed; }
+.retryBtn { margin-top: 6px; min-height: 40px; padding: 8px 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: #356bd9; color: white; cursor: pointer; }
+.statusError, .statusSuccess { width: min(1120px, 92%); margin: 12px auto; padding: 12px 14px; border-radius: 10px; }
+.statusError { color: #ffcdcd; background: rgba(151,31,31,.24); border: 1px solid rgba(255,124,124,.4); }
+.statusSuccess { color: #d6ffe5; background: rgba(20,117,67,.24); border: 1px solid rgba(91,220,145,.4); }
+.helpText { color: #d8deed; font-size: 13px; line-height: 1.55; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+@media (max-width: 700px) {
+  .page { padding-top: 12px; }
+  .topbar { align-items: flex-start; gap: 12px; }
+  .topbarControls { width: 100%; justify-content: flex-start; }
+  .userIdentity { width: 100%; }
+  .scoreValue { font-size: 44px; }
+  .tourFooter { align-items: flex-start; gap: 12px; flex-direction: column; }
+  .tourBtns { width: 100%; }
+  .tourGhost, .tourPrimary { flex: 1; min-height: 44px; }
+}
+
+@media (max-width: 390px) {
+  .topbar, .grid { width: calc(100% - 24px); }
+  .topbar { flex-direction: column; }
+  .demoBtn, .logoutBtn { flex: 1 1 135px; min-height: 44px; }
+  .card { padding: 14px; }
+  .barRow { grid-template-columns: 1fr 48px; }
+  .barTrack { grid-column: 1 / -1; grid-row: 2; }
+  .barValue { grid-column: 2; grid-row: 1; }
+  .tourCard { width: 100%; padding: 18px 14px; }
 }

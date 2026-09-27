@@ -1,41 +1,44 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { register,saveToken } from "@/app/lib/auth"; 
-import styles from "./cadastro.module.css";
+import { AuthSubmitButton, FormAlert, PasswordField } from "@/app/components/auth-controls";
+import { register, saveToken } from "@/app/lib/auth";
+import styles from "@/app/components/auth.module.css";
 
 export default function CadastroPage() {
   const router = useRouter();
 
-  // Estados para visibilidade das senhas
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Estados para os campos do formulário
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submitting) return;
     setError("");
 
-    // Validação básica de cliente antes de chamar a API
     if (password !== confirmPassword) {
       setError("As senhas não coincidem.");
       return;
     }
 
+    setSubmitting(true);
     try {
       const { token } = await register(name, email, password, confirmPassword);
       saveToken(token);
-      router.push("/dashboard");
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erro ao criar conta. Tente novamente.");
+      router.replace("/dashboard");
+    } catch {
+      setError("Não foi possível criar a conta. Revise os dados ou tente novamente em instantes.");
+      setSubmitting(false);
     }
   }
 
@@ -43,102 +46,68 @@ export default function CadastroPage() {
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.brand}>
-          <img src="/logo-lumen.png" alt="Lumen" />
+          <Image src="/logo-lumen.png" alt="" width={28} height={28} />
           <strong>Lumen</strong>
         </div>
 
         <h1 className={styles.title}>Criar conta</h1>
         <p className={styles.subtitle}>
-          Cadastre-se para acompanhar seu histórico e análises.
+          Cadastre-se para acompanhar seu histórico e suas estimativas.
         </p>
 
-        <form onSubmit={onSubmit}>
+        <form onSubmit={onSubmit} aria-busy={submitting}>
           <div className={styles.field}>
-            <label className={styles.label}>Nome completo</label>
+            <label className={styles.label} htmlFor="register-name">Nome completo</label>
             <input
               className={styles.input}
+              id="register-name"
+              name="name"
               type="text"
-              placeholder="Seu nome completo"
+              autoComplete="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              minLength={3}
+              maxLength={80}
+              disabled={submitting}
               required
             />
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Email</label>
+            <label className={styles.label} htmlFor="register-email">Email</label>
             <input
               className={styles.input}
+              id="register-email"
+              name="email"
               type="email"
-              placeholder="seuemail@gmail.com"
+              autoComplete="email"
+              inputMode="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              maxLength={254}
+              disabled={submitting}
               required
             />
           </div>
 
-          {/* SENHA */}
           <div className={styles.field}>
-            <label className={styles.label}>Senha</label>
-            <div className={styles.passwordWrap}>
-              <input
-                className={styles.input}
-                type={showPassword ? "text" : "password"}
-                placeholder="Crie uma senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className={styles.showBtn}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <PasswordField id="register-password" label="Senha" name="password" autoComplete="new-password"
+              value={password} visible={showPassword} disabled={submitting} styles={styles}
+              onChange={setPassword} onToggle={() => setShowPassword((visible) => !visible)} />
           </div>
 
-          {/* CONFIRMAR SENHA */}
           <div className={styles.field}>
-            <label className={styles.label}>Confirmar senha</label>
-            <div className={styles.passwordWrap}>
-              <input
-                className={styles.input}
-                type={showConfirm ? "text" : "password"}
-                placeholder="Confirme sua senha"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className={styles.showBtn}
-                onClick={() => setShowConfirm(!showConfirm)}
-              >
-                {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <PasswordField id="register-confirm-password" label="Confirmar senha" name="confirmPassword"
+              autoComplete="new-password" value={confirmPassword} visible={showConfirm} disabled={submitting}
+              styles={styles} onChange={setConfirmPassword} onToggle={() => setShowConfirm((visible) => !visible)} />
           </div>
 
-          {error && (
-            <p style={{ color: "#ff4d4d", fontSize: "14px", marginBottom: "15px", textAlign: "center" }}>
-              {error}
-            </p>
-          )}
-
-          <button className={styles.primaryBtn} type="submit">
-            Criar conta
-          </button>
-
-          <div className={styles.divider}>ou</div>
-
-          <button className={styles.secondaryBtn} type="button">
-            Criar com Google
-          </button>
+          <FormAlert message={error} className={styles.error} />
+          <AuthSubmitButton idleLabel="Criar conta" loadingLabel="Criando conta…" submitting={submitting}
+            className={styles.primaryBtn} />
 
           <p className={styles.bottom}>
-            Já tem conta? <a href="/login">Entrar</a>
+            Já tem conta? <Link href="/login">Entrar</Link>
           </p>
         </form>
       </div>
