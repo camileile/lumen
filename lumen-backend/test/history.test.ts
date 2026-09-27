@@ -12,6 +12,8 @@ test("history is empty and weekly average is null without observations", () => {
     currentScore: null,
     scoreHistory: [],
     weeklyAverage: null,
+    weeklyAverages: [],
+    trend: { direction: "insufficient", delta: null, currentAverage: null, previousAverage: null },
   });
 });
 

@@ -3,7 +3,7 @@
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import styles from "../dashboard.module.css";
 
-export type ChartPoint = { day: string; value: number | null };
+export type ChartPoint = { day: string; value: number | null; observedDays?: number };
 
 export function ScoreLine({ data, showAxis = false }: { data: ChartPoint[]; showAxis?: boolean }) {
   return <div className={styles.chartVisual} aria-hidden="true">
@@ -41,8 +41,8 @@ export function ChartDataTable({ caption, data }: { caption: string; data: Chart
     <div className={styles.tableScroll}>
       <table className={styles.chartTable}>
         <caption>{caption}</caption>
-        <thead><tr><th scope="col">Data</th><th scope="col">Estimativa</th></tr></thead>
-        <tbody>{data.map((point) => <tr key={point.day}><th scope="row">{point.day}</th><td>{point.value ?? "Indisponível"}</td></tr>)}</tbody>
+        <thead><tr><th scope="col">Período</th><th scope="col">Estimativa</th><th scope="col">Observações</th></tr></thead>
+        <tbody>{data.map((point) => <tr key={point.day}><th scope="row">{point.day}</th><td>{point.value ?? "Indisponível"}</td><td>{point.observedDays ?? "—"}</td></tr>)}</tbody>
       </table>
     </div>
   </details>;
