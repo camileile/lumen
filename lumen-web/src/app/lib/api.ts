@@ -4,12 +4,7 @@ export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 
   const res = await fetch(`${base}${path}`, {
     ...init,
-    cache: "no-store", // ✅ força sempre buscar do servidor
-    headers: {
-      ...(init?.headers || {}),
-      "Cache-Control": "no-cache",
-      Pragma: "no-cache",
-    },
+    cache: "no-store",
   });
 
   const data: unknown = await res.json().catch(() => ({}));

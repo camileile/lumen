@@ -2,7 +2,7 @@ import type { DashboardData, HistoryResponse } from "./types";
 
 export const NOT_ENOUGH_DATA_COPY = "Not enough data yet";
 export const AUTOMATED_ESTIMATE_COPY =
-  "Automated estimate based primarily on source/domain signals. Not a fact check.";
+  "Estimativa automatizada baseada principalmente em sinais da fonte e do domínio. Não é uma checagem factual.";
 
 export function mapStatusLabel(
   status: string,
