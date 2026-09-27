@@ -1,5 +1,6 @@
 import styles from "./page.module.css";
 import { Eye, BarChart3, TrendingUp } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -31,7 +32,7 @@ export default function Home() {
 
           {/* IMAGEM */}
           <div className={styles.heroRight}>
-            <img className={styles.mascot} src="/mascot.png" alt="Mascote Lumen" />
+            <Image className={styles.mascot} src="/mascot.png" alt="Mascote Lumen" width={1000} height={1000} priority />
           </div>
         </div>
       </section>
@@ -77,7 +78,7 @@ export default function Home() {
           </div>
 
           <div className={styles.privacyImageWrap}>
-            <img className={styles.privacyImage} src="/privacy.png" alt="Privacidade no Lumen" />
+            <Image className={styles.privacyImage} src="/privacy.png" alt="Ilustração sobre privacidade no Lumen" width={1000} height={1000} />
           </div>
         </div>
       </section>
@@ -87,7 +88,7 @@ export default function Home() {
         <h2 className={styles.previewTitle}>Dados claros. Decisões melhores.</h2>
 
         <div className={styles.previewImageWrap}>
-          <img className={styles.previewImage} src="/dashboard-preview.png" alt="Dashboard Lumen" />
+          <Image className={styles.previewImage} src="/dashboard-preview.png" alt="Prévia ilustrativa do dashboard Lumen" width={1345} height={880} />
         </div>
       </section>
 

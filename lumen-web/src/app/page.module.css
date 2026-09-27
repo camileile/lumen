@@ -248,6 +248,15 @@
     line-height: 1.7;
   }
 
+  .privacyText {
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  .privacyImageWrap { padding-left: 0; }
+
+  .previewImage { width: 100%; }
+
   .mascot {
     width: min(360px, 100%);
     transform: none;

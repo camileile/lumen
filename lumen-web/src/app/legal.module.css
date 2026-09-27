@@ -1,0 +1,5 @@
+.page { width: min(760px, 92%); margin: 0 auto; padding: 64px 0 24px; }
+.page h1 { font-size: clamp(2rem, 6vw, 3rem); margin: 0 0 18px; }
+.page h2 { margin-top: 32px; font-size: 1.25rem; }
+.page p, .page li { color: #d8deed; line-height: 1.75; }
+.notice { padding: 14px 16px; border: 1px solid rgba(143,176,255,.4); border-radius: 12px; background: rgba(53,107,217,.12); }

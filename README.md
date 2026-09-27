@@ -70,6 +70,7 @@ Frontend (`lumen-web/.env.local`):
 | Variable | Purpose | Safe local example |
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Browser-visible backend URL | `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL` | Optional deployed site origin for canonical/Open Graph URLs | unset locally |
 
 The committed example files contain placeholders only. Use deployment secret management for real credentials.
 
