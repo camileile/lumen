@@ -14,8 +14,13 @@
   "include": [
     "src/app/lib/api.ts",
     "src/app/lib/dashboardData.ts",
+    "src/app/lib/ui.ts",
+    "src/app/lib/site-navigation.ts",
     "src/app/lib/types.ts",
-    "test/**/*.ts"
+    "src/app/components/auth-controls.tsx",
+    "src/app/dashboard/components/tutorial-dialog.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx"
   ],
   "exclude": ["node_modules", ".next", ".test-dist"]
 }
