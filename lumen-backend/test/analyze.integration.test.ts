@@ -153,6 +153,41 @@ test("falls back when the mocked provider aborts like a timeout", async () => {
   assert.equal((response.body as { mode: string }).mode, "local-fallback");
 });
 
+test("applies the provider deadline to a response body that never finishes", { timeout: 5_000 }, async () => {
+  const { token } = await registerFixtureUser(api);
+  const previousTimeout = process.env.OPENROUTER_TIMEOUT_MS;
+  process.env.OPENROUTER_TIMEOUT_MS = "100";
+  let bodyAborted = false;
+
+  // Headers arrive immediately; the body stalls until the request signal aborts, like native fetch.
+  api.mockOpenRouter(async (_input, init) => {
+    const signal = init?.signal;
+    assert(signal);
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"choices":['));
+        signal.addEventListener("abort", () => {
+          bodyAborted = true;
+          const error = new Error("synthetic body timeout");
+          error.name = "AbortError";
+          controller.error(error);
+        }, { once: true });
+      },
+    });
+    return new Response(body, { status: 200, headers: { "Content-Type": "application/json" } });
+  });
+
+  try {
+    const response = await analyze(token, { url: "https://example.com/slow-body" });
+    assert.equal(response.status, 200);
+    assert.equal((response.body as { mode: string }).mode, "local-fallback");
+    assert.equal(bodyAborted, true);
+  } finally {
+    if (previousTimeout === undefined) delete process.env.OPENROUTER_TIMEOUT_MS;
+    else process.env.OPENROUTER_TIMEOUT_MS = previousTimeout;
+  }
+});
+
 test("handles a malformed AI payload without trusting a numeric default", async () => {
   const { token } = await registerFixtureUser(api);
   api.mockOpenRouter(async () =>
