@@ -1,9 +1,13 @@
 // src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from "express";
-import { verifyAccessToken } from "../security/jwt";
+import { verifyApiToken } from "../security/jwt";
 import { AppError } from "../security/app-error";
 
-export type AuthedRequest = Request & { userId?: string };
+export type AuthedRequest = Request & {
+  userId?: string;
+  authKind?: "web" | "extension";
+  installationId?: string;
+};
 
 export function authMiddleware(req: AuthedRequest, res: Response, next: NextFunction) {
   try {
@@ -14,7 +18,10 @@ export function authMiddleware(req: AuthedRequest, res: Response, next: NextFunc
       return res.status(401).json({ error: "Token ausente ou inválido" });
     }
 
-    req.userId = verifyAccessToken(token).userId;
+    const verified = verifyApiToken(token);
+    req.userId = verified.userId;
+    req.authKind = verified.authKind;
+    req.installationId = verified.installationId;
     return next();
   } catch (error) {
     if (error instanceof AppError && error.status >= 500) return next(error);

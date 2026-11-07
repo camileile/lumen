@@ -24,6 +24,11 @@ export function mapHistoryToDashboard(data: HistoryResponse): DashboardData {
     day: dateLabel(point.date),
     value: point.value,
   }));
+  const weeklySeries = data.weeklyAverages.map((point) => ({
+    day: point.label,
+    value: point.value,
+    observedDays: point.observedDays,
+  }));
 
   return {
     mascot: { name: "Lumen" },
@@ -32,8 +37,8 @@ export function mapHistoryToDashboard(data: HistoryResponse): DashboardData {
     statusHint: data.insight,
     xp: data.score ?? 0,
     scoreSeries,
-    weeklySeries: scoreSeries.slice(-7),
-    weeklyAverage: data.weeklyAverage,
+    weeklySeries,
+    weeklyAverage: weeklySeries.at(-1)?.value ?? null,
     distribution: hasData
       ? [
           {
@@ -58,10 +63,7 @@ export function mapHistoryToDashboard(data: HistoryResponse): DashboardData {
           },
         ]
       : [],
-    trend: {
-      title: "Histórico observado",
-      subtitle: data.scoreHistory.length < 2 ? NOT_ENOUGH_DATA_COPY : "Somente dias com observações reais",
-    },
+    trend: data.trend,
     insight: data.insight,
     lastAccess: data.items.slice(0, 5),
   };

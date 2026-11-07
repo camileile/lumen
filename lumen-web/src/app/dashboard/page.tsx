@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getToken } from "@/app/lib/auth";
 import { AUTOMATED_ESTIMATE_COPY } from "@/app/lib/dashboardData";
 import { DashboardHeader } from "./components/dashboard-header";
 import { DashboardError, DashboardLoading } from "./components/dashboard-states";
@@ -11,6 +10,7 @@ import { MascotCard } from "./components/mascot-card";
 import { ScoreCard } from "./components/score-card";
 import { TutorialDialog, type TourStep } from "./components/tutorial-dialog";
 import { useDashboardData } from "./use-dashboard-data";
+import { useExtensionConnection } from "./use-extension-connection";
 import styles from "./dashboard.module.css";
 
 const TOUR_KEY = "lumen_dashboard_tour_done_v1";
@@ -25,14 +25,12 @@ const steps: TourStep[] = [
 
 export default function DashboardPage() {
   const dashboard = useDashboardData();
+  const extension = useExtensionConnection();
   const [name, setName] = useState("Lumen");
   const [draftName, setDraftName] = useState("Lumen");
   const [editingName, setEditingName] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [step, setStep] = useState(0);
-  const [connecting, setConnecting] = useState(false);
-  const [connectionMessage, setConnectionMessage] = useState("");
-  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
     if (!dashboard.user) return;
@@ -59,53 +57,17 @@ export default function DashboardPage() {
     setStep(0);
   }
 
-  async function connectExtension() {
-    const token = getToken();
-    if (!token || connecting) return;
-    setConnecting(true);
-    setConnectionMessage("");
-    setConnectionError(false);
-    const requestId = crypto.randomUUID().replaceAll("-", "");
-
-    const connected = await new Promise<boolean>((resolve) => {
-      const timeout = window.setTimeout(() => {
-        window.removeEventListener("message", onMessage);
-        resolve(false);
-      }, 5_000);
-
-      function onMessage(event: MessageEvent) {
-        if (event.source !== window || event.origin !== window.location.origin || event.data?.requestId !== requestId) return;
-        if (event.data?.type === "LUMEN_CONNECT_CHALLENGE" && typeof event.data.challenge === "string") {
-          window.postMessage({ type: "LUMEN_CONNECT_COMMIT", requestId, challenge: event.data.challenge, token }, window.location.origin);
-          return;
-        }
-        if (event.data?.type === "LUMEN_CONNECT_RESULT") {
-          window.clearTimeout(timeout);
-          window.removeEventListener("message", onMessage);
-          resolve(event.data.ok === true);
-        }
-      }
-
-      window.addEventListener("message", onMessage);
-      window.postMessage({ type: "LUMEN_CONNECT_REQUEST", requestId }, window.location.origin);
-    });
-
-    setConnecting(false);
-    setConnectionError(!connected);
-    setConnectionMessage(connected
-      ? "Extensão conectada. Novas análises autenticadas poderão aparecer no histórico."
-      : "Não foi possível conectar. Confirme que a extensão está instalada e tente novamente.");
-  }
-
   if (!dashboard.ready || !dashboard.user) return <DashboardLoading />;
 
   return <div className={styles.page}>
-    <DashboardHeader user={dashboard.user} demo={dashboard.demo} loading={dashboard.loading} connecting={connecting}
-      onToggleDemo={() => dashboard.setDemoMode(!dashboard.demo)} onConnect={connectExtension}
+    <DashboardHeader user={dashboard.user} demo={dashboard.demo} loading={dashboard.loading}
+      extensionState={extension.state} extensionIdentity={extension.identity}
+      onToggleDemo={() => dashboard.setDemoMode(!dashboard.demo)} onConnect={() => void extension.connect()}
       onRefresh={() => void dashboard.refresh()} onLogout={dashboard.logout} />
 
-    {connectionMessage && <p className={connectionError ? styles.statusError : styles.statusSuccess}
-      role={connectionError ? "alert" : "status"} aria-live="polite">{connectionMessage}</p>}
+    {extension.state === "error" && <p className={styles.statusError} role="alert">
+      Não foi possível iniciar a conexão. Abra o popup da extensão ou tente novamente.
+    </p>}
 
     {!dashboard.demo && dashboard.error && <DashboardError message={dashboard.error} onRetry={() => void dashboard.refresh()} />}
     {!dashboard.demo && dashboard.loading && !dashboard.error && <DashboardLoading />}

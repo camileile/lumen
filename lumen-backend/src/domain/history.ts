@@ -4,6 +4,7 @@ import {
   normalizeCategory,
   SCORE_WINDOW_SIZE,
 } from "./score";
+import { calculateTrend, calculateWeeklyAverages, type TrendSummary, type WeeklyAveragePoint } from "./analytics";
 
 export type DatedCategoryObservation = {
   category: unknown;
@@ -20,6 +21,8 @@ export type HistoryMetrics = {
   currentScore: number | null;
   scoreHistory: ScoreHistoryPoint[];
   weeklyAverage: number | null;
+  weeklyAverages: WeeklyAveragePoint[];
+  trend: TrendSummary;
 };
 
 function utcDayKey(date: Date): string {
@@ -85,11 +88,14 @@ export function buildHistoryMetrics(
   const categories = validObservations(observations).map((observation) => observation.category);
 
   const scoreHistory = buildScoreHistory(observations);
+  const weeklyAverages = calculateWeeklyAverages(scoreHistory);
 
   return {
     categories,
     currentScore: calculateScore(categories),
     scoreHistory,
     weeklyAverage: calculateWeeklyAverage(scoreHistory),
+    weeklyAverages,
+    trend: calculateTrend(weeklyAverages),
   };
 }

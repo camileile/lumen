@@ -167,3 +167,7 @@ html, body{
   font-size: 11px;
   opacity: .9;
 }
+
+.accountCard { margin-top: 12px; display: grid; gap: 8px; }
+.accountIdentity { font-size: 12px; overflow-wrap: anywhere; }
+[hidden] { display: none !important; }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AuthSubmitButton, FormAlert, PasswordField } from "@/app/components/auth-controls";
 import { login, saveToken } from "@/app/lib/auth";
+import { safeLoginReturnPath } from "@/app/lib/extensionAuth";
 import styles from "@/app/components/auth.module.css";
 
 export default function LoginPage() {
@@ -26,7 +27,7 @@ export default function LoginPage() {
     try {
       const { token } = await login(email, password);
       saveToken(token);
-      router.replace("/dashboard");
+      router.replace(safeLoginReturnPath(new URLSearchParams(window.location.search).get("next")));
     } catch {
       setError("Não foi possível entrar. Verifique suas credenciais ou tente novamente em instantes.");
       setSubmitting(false);

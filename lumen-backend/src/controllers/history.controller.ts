@@ -96,6 +96,8 @@ export async function getHistory(req: AuthedRequest, res: Response) {
       status: presentation.status,
       distribution,
       weeklyAverage: metrics.weeklyAverage,
+      weeklyAverages: metrics.weeklyAverages,
+      trend: metrics.trend,
       scoreHistory: metrics.scoreHistory,
       insight: presentation.insight,
       methodology: {

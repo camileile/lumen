@@ -1,0 +1,12 @@
+.page { min-height: calc(100vh - 80px); display: grid; place-items: center; padding: 24px 16px; }
+.card { width: min(560px, 100%); padding: 28px; border-radius: 18px; border: 1px solid rgba(255,255,255,.12); background: rgba(16,25,53,.82); color: #eef1f8; box-shadow: 0 24px 80px rgba(0,0,0,.35); }
+.card h1 { margin: 8px 0 12px; }
+.card p { line-height: 1.55; color: #d8deed; }
+.eyebrow { color: #9db9ff; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.identity { padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.06); overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0; align-items: center; }
+.actions button { min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; background: #356bd9; color: #fff; font-weight: 800; cursor: pointer; }
+.actions a, .card > a { color: #b8ccff; }
+.success { color: #baffd1 !important; }
+.error { color: #ffcdcd !important; }
+.card small { display: block; margin-top: 22px; color: #aeb7ca; line-height: 1.5; }

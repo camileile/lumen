@@ -4,7 +4,7 @@
 
 /* ===== TOPBAR ===== */
 .topbar {
-  width: min(1120px, 92%);
+  width: min(1180px, calc(100% - 32px));
   margin: 0 auto 18px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -48,11 +48,11 @@
 
 /* ===== GRID ===== */
 .grid {
-  width: min(1120px, 92%);
+  width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
 
   display: grid;
-  grid-template-columns: 320px 1fr 1fr 1fr;
+  grid-template-columns: minmax(260px, 300px) repeat(3, minmax(0, 1fr));
   grid-auto-rows: minmax(140px, auto);
   gap: 14px;
 }
@@ -64,6 +64,7 @@
   border-radius: 18px;
   padding: 16px;
   overflow: hidden;
+  min-width: 0;
 }
 
 /* ===== LEFT (AVATAR) ===== */
@@ -303,6 +304,41 @@
   font-weight: 800;
   color: rgba(255,255,255,0.9);
 }
+
+.trendSummary {
+  min-height: 132px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.trendDirection {
+  font-size: 20px;
+  color: #eef1f8;
+}
+
+.trendDelta {
+  font-size: 26px;
+  font-weight: 800;
+  color: #eef1f8;
+}
+
+.trendValues {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.trendValues div {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(0,0,0,.12);
+}
+
+.trendValues dt { color: rgba(255,255,255,.65); font-size: 11px; }
+.trendValues dd { margin: 2px 0 0; font-size: 16px; font-weight: 800; }
 
 /* ===== DISTRIBUTION BARS ===== */
 .bars {
@@ -544,7 +580,7 @@
 }
 
 /* ===== RESPONSIVO ===== */
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .grid {
     grid-template-columns: 1fr;
   }
@@ -784,10 +820,10 @@
 .chartTable caption { text-align: left; padding: 6px 0; color: #d8deed; }
 .chartTable th, .chartTable td { border-bottom: 1px solid rgba(255,255,255,.12); padding: 6px; text-align: left; }
 .demoBtn:disabled { cursor: not-allowed; opacity: .6; }
-.statePanel { width: min(1120px, 92%); margin: 14px auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; border: 1px solid rgba(143,176,255,.35); border-radius: 14px; background: rgba(16,25,53,.7); color: #e7ecff; }
+.statePanel { width: min(1180px, calc(100% - 32px)); margin: 14px auto; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 16px; border: 1px solid rgba(143,176,255,.35); border-radius: 14px; background: rgba(16,25,53,.7); color: #e7ecff; }
 .statePanel span { color: #d8deed; }
 .retryBtn { margin-top: 6px; min-height: 40px; padding: 8px 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,.2); background: #356bd9; color: white; cursor: pointer; }
-.statusError, .statusSuccess { width: min(1120px, 92%); margin: 12px auto; padding: 12px 14px; border-radius: 10px; }
+.statusError, .statusSuccess { width: min(1180px, calc(100% - 32px)); margin: 12px auto; padding: 12px 14px; border-radius: 10px; }
 .statusError { color: #ffcdcd; background: rgba(151,31,31,.24); border: 1px solid rgba(255,124,124,.4); }
 .statusSuccess { color: #d6ffe5; background: rgba(20,117,67,.24); border: 1px solid rgba(91,220,145,.4); }
 .helpText { color: #d8deed; font-size: 13px; line-height: 1.55; }

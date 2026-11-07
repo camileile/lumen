@@ -1,9 +1,34 @@
-// O token só é aceito no dashboard autorizado e após um desafio descartável da extensão.
+// O dashboard recebe apenas um desafio descartável. Tokens nunca atravessam window.postMessage.
 window.addEventListener("message", async (event) => {
   if (event.source !== window || !LumenHandshakePolicy.isTrustedOrigin(event.origin)) return;
 
-  if (event.data?.type === "LUMEN_CONNECT_REQUEST" && LumenHandshakePolicy.isValidNonce(event.data.requestId)) {
-    const response = await chrome.runtime.sendMessage({ type: "CREATE_CONNECT_CHALLENGE" });
+  if (event.data?.type === "LUMEN_ACCOUNT_STATUS_REQUEST" &&
+      LumenHandshakePolicy.isTrustedDashboardUrl(window.location.href, "/dashboard") &&
+      LumenHandshakePolicy.isValidNonce(event.data.requestId)) {
+    const response = await chrome.runtime.sendMessage({ type: "GET_ACCOUNT_STATUS" });
+    window.postMessage({ type: "LUMEN_ACCOUNT_STATUS_RESULT", requestId: event.data.requestId, ...response }, LumenHandshakePolicy.trustedDashboardOrigin);
+    return;
+  }
+
+  if (event.data?.type === "LUMEN_START_ACCOUNT_CONNECTION" &&
+      LumenHandshakePolicy.isTrustedDashboardUrl(window.location.href, "/dashboard") &&
+      LumenHandshakePolicy.isValidNonce(event.data.requestId)) {
+    const response = await chrome.runtime.sendMessage({ type: "START_ACCOUNT_CONNECTION" });
+    window.postMessage({ type: "LUMEN_START_ACCOUNT_RESULT", requestId: event.data.requestId, ...response }, LumenHandshakePolicy.trustedDashboardOrigin);
+    return;
+  }
+
+  if (event.data?.type === "LUMEN_CONNECT_REQUEST" &&
+      LumenHandshakePolicy.isTrustedDashboardUrl(window.location.href, "/extension/connect") &&
+      LumenHandshakePolicy.isValidNonce(event.data.requestId) &&
+      LumenHandshakePolicy.isValidInstallationId(event.data.installationId) &&
+      LumenHandshakePolicy.isValidPkceChallenge(event.data.codeChallenge)) {
+    const response = await chrome.runtime.sendMessage({
+      type: "PREPARE_EXTENSION_AUTH",
+      requestId: event.data.requestId,
+      installationId: event.data.installationId,
+      codeChallenge: event.data.codeChallenge,
+    });
     if (!response?.ok || !LumenHandshakePolicy.isValidNonce(response.challenge)) return;
     window.postMessage(
       { type: "LUMEN_CONNECT_CHALLENGE", requestId: event.data.requestId, challenge: response.challenge },
@@ -12,14 +37,20 @@ window.addEventListener("message", async (event) => {
     return;
   }
 
-  if (event.data?.type === "LUMEN_CONNECT_COMMIT") {
+  if (event.data?.type === "LUMEN_CONNECT_COMMIT" &&
+      LumenHandshakePolicy.isTrustedDashboardUrl(window.location.href, "/extension/connect")) {
     if (!LumenHandshakePolicy.isValidNonce(event.data.requestId) ||
         !LumenHandshakePolicy.isValidNonce(event.data.challenge) ||
-        !LumenHandshakePolicy.isValidToken(event.data.token)) return;
+        !LumenHandshakePolicy.isValidInstallationId(event.data.installationId) ||
+        !LumenHandshakePolicy.isValidPkceChallenge(event.data.codeChallenge) ||
+        !LumenHandshakePolicy.isValidAuthorizationCode(event.data.authorizationCode)) return;
     const response = await chrome.runtime.sendMessage({
-      type: "SET_TOKEN",
+      type: "COMPLETE_EXTENSION_AUTH",
+      requestId: event.data.requestId,
       challenge: event.data.challenge,
-      token: event.data.token,
+      installationId: event.data.installationId,
+      codeChallenge: event.data.codeChallenge,
+      authorizationCode: event.data.authorizationCode,
     });
     window.postMessage(
       { type: "LUMEN_CONNECT_RESULT", requestId: event.data.requestId, ok: response?.ok === true },

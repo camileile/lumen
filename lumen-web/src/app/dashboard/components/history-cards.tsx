@@ -1,27 +1,34 @@
 import { NOT_ENOUGH_DATA_COPY } from "@/app/lib/dashboardData";
 import { CATEGORY_PRESENTATION } from "@/app/lib/ui";
 import type { DashboardData } from "@/app/lib/types";
-import { ChartDataTable, ScoreLine, WeeklyBars } from "./dashboard-charts";
+import { ChartDataTable, WeeklyBars } from "./dashboard-charts";
 import styles from "../dashboard.module.css";
 
 export function HistorySummaryCard({ data }: { data: DashboardData }) {
+  const trend = data.trend;
+  const available = trend.direction !== "insufficient";
+  const direction = trend.direction === "up" ? "Subindo" : trend.direction === "down" ? "Descendo" : "Sem mudança";
+  const symbol = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
   return <section className={`${styles.card} ${styles.smallCard}`} aria-labelledby="history-summary-title">
-    <h3 id="history-summary-title">{data.trend.title}</h3>
-    <p className={styles.smallSub}>{data.trend.subtitle}</p>
-    {data.weeklySeries.length === 0 ? <div className={styles.miniEmpty} role="status"><span>{NOT_ENOUGH_DATA_COPY}</span></div> : <>
-      <div className={styles.miniChart}><ScoreLine data={data.weeklySeries} /></div>
-      <ChartDataTable caption="Observações recentes" data={data.weeklySeries} />
-    </>}
+    <h3 id="history-summary-title">Tendência</h3>
+    {!available ? <div className={styles.miniEmpty} role="status"><span>Dados insuficientes para tendência</span></div> : <div className={styles.trendSummary}>
+      <strong className={styles.trendDirection}><span aria-hidden="true">{symbol}</span> {direction}</strong>
+      <span className={styles.trendDelta}>{trend.delta! > 0 ? "+" : ""}{trend.delta} pontos</span>
+      <dl className={styles.trendValues}>
+        <div><dt>Atual</dt><dd>{trend.currentAverage}</dd></div>
+        <div><dt>Anterior</dt><dd>{trend.previousAverage}</dd></div>
+      </dl>
+    </div>}
   </section>;
 }
 
 export function WeeklyAverageCard({ data }: { data: DashboardData }) {
   return <section className={`${styles.card} ${styles.smallCard}`} aria-labelledby="weekly-title">
-    <h3 id="weekly-title">Média dos dias com dados</h3>
+    <h3 id="weekly-title">Média semanal</h3>
     <div className={styles.weekValue} aria-label={data.weeklyAverage === null ? "Média indisponível" : `Média ${data.weeklyAverage}`}>{data.weeklyAverage ?? "—"}</div>
     {data.weeklySeries.length === 0 ? <div className={styles.miniEmpty} role="status"><span>{NOT_ENOUGH_DATA_COPY}</span></div> : <>
       <div className={styles.miniChart2}><WeeklyBars data={data.weeklySeries} /></div>
-      <ChartDataTable caption="Valores usados na média semanal" data={data.weeklySeries} />
+      <ChartDataTable caption="Semanas com observações reais" data={data.weeklySeries} />
     </>}
   </section>;
 }

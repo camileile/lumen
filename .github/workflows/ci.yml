@@ -98,7 +98,7 @@ jobs:
         shell: bash
         run: |
           runtime_files=(
-            background.js content.js domain-classifier.js handshake-policy.js manifest.json privacy-url.js
+            background.js content.js domain-classifier.js extension-auth.js handshake-policy.js manifest.json privacy-url.js
             popup.css popup.html popup.js score-contract.js
             icon-amarelo.png icon-verde.png icon-vermelho.png
             lume-amarelo.gif lume-verde.gif lume-vermelho.gif

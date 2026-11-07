@@ -32,6 +32,20 @@ export type HistoryResponse = {
   distribution: DistributionRaw;
   weeklyAverage: number | null;
   scoreHistory: ScorePoint[];
+  weeklyAverages: Array<{
+    week: string;
+    label: string;
+    startDate: string;
+    endDate: string;
+    value: number;
+    observedDays: number;
+  }>;
+  trend: {
+    direction: "up" | "down" | "flat" | "insufficient";
+    delta: number | null;
+    currentAverage: number | null;
+    previousAverage: number | null;
+  };
   insight: string;
   methodology: {
     version: string;
@@ -50,7 +64,7 @@ export type DashboardData = {
   xp: number;
 
   scoreSeries: { day: string; value: number }[];
-  weeklySeries: { day: string; value: number | null }[];
+  weeklySeries: Array<{ day: string; value: number; observedDays: number }>;
   weeklyAverage: number | null;
 
   distribution: {
@@ -59,7 +73,7 @@ export type DashboardData = {
     colorKey: "good" | "neutral" | "warn" | "bad";
   }[];
 
-  trend: { title: string; subtitle: string };
+  trend: HistoryResponse["trend"];
   insight: string;
 
   lastAccess: AccessItem[];
