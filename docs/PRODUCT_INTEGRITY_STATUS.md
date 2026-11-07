@@ -115,7 +115,7 @@ The backend uses Node's built-in test runner and the existing TypeScript compile
 - Lumen does not currently fetch or analyze the full text of a news article.
 - Results are automated signals based primarily on source/domain information and browsing observations.
 - The score is not a mathematical probability that a source or article is true.
-- Domain matching still uses substring rules and is not safe against lookalike/suffix domains; correcting the classifier is a separate methodology/security decision.
+- At the time of this phase, domain matching used substring rules. Phase 3 replaced them with exact-host-or-subdomain matching in both the backend and the extension; the source lists themselves remain small and unchanged.
 - Local extension history and authenticated backend history are separate observation stores, although they now implement the same score contract.
 - OpenRouter category selection remains nondeterministic and based on a URL/domain-only prompt routed through a changing free model.
 - Historical rows do not store a methodology version, provider version, or evidence coverage. Legacy categories can be normalized, but old results cannot be fully reproduced.
