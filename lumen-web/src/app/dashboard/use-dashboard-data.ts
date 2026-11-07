@@ -27,6 +27,8 @@ export function useDashboardData() {
     }
 
     const nextDemo = localStorage.getItem(DEMO_KEY) === "1";
+    // Browser-only state is read after hydration; moving it to an external store is deferred UX work.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDemo(nextDemo);
     setReady(true);
 
@@ -51,6 +53,8 @@ export function useDashboardData() {
   }, []);
 
   useEffect(() => {
+    // Initial client-side fetch once the session is known; refresh() starts with a loading state update.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (ready && user && !demo) void refresh();
   }, [demo, ready, refresh, user]);
 

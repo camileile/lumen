@@ -37,6 +37,8 @@ function ExtensionConnectContent() {
 
   useEffect(() => {
     if (!request) {
+      // Search params are only available on the client; an invalid request switches to the error phase.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPhase("error");
       setMessage("Esta solicitação de conexão é inválida ou expirou.");
       return;
