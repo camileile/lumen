@@ -4,6 +4,13 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
+  schedule:
+    # Weekly run so newly published advisories surface without waiting for a Pull Request.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
