@@ -111,7 +111,7 @@ The extension suite currently reports pass/fail without a committed coverage thr
 
 ## GitHub Actions
 
-`.github/workflows/ci.yml` runs on Pull Requests targeting `main` with cancellation of superseded runs.
+`.github/workflows/ci.yml` runs on Pull Requests targeting `main`, on pushes to `main`, weekly on Mondays at 09:00 UTC, and on manual dispatch, with cancellation of superseded runs. The scheduled run exists so newly published advisories fail visibly even when no Pull Request is open (added in Phase 6). Dependabot (`.github/dependabot.yml`) proposes grouped weekly patch/minor updates for both Node applications and monthly GitHub Actions updates; major upgrades are ignored and planned separately.
 
 - **Frontend:** Node setup/cache, clean install, lint, typecheck, tests, build, and npm audit.
 - **Backend:** Node setup/cache, clean install, Prisma Client generation, lint, typecheck, tests, build, and the explicit audit policy.
@@ -122,8 +122,8 @@ The workflow performs no deployment, merge, migration, or write to a production 
 
 ## Security Checks
 
-- Frontend runs `npm audit --audit-level=high`; its validated tree reports zero known vulnerabilities.
-- Backend runs `npm run audit:ci`. The script parses `npm audit --json`, allows only `prisma`, `@prisma/config`, and `deepmerge-ts` when they resolve exclusively to `GHSA-ggr8-5vv4-36mx`, and fails for any other vulnerable package or advisory.
+- Frontend runs `npm audit --audit-level=high`; after Phase 6 its tree reports no high or critical advisories (one moderate, development-only lint chain remains; see `DEPENDENCY_SECURITY_STATUS.md`).
+- Backend runs `npm run audit:ci`. The script parses `npm audit --json` and accepts only an explicit list of advisory-bound exceptions (currently `GHSA-ggr8-5vv4-36mx` for the Prisma tooling chain and `GHSA-g3hv-75wg-m249` for the development-only lint chain). It fails for any other vulnerable package or advisory, fails when an excepted package appears without its documented advisory, and reports exceptions that are no longer needed.
 - Gitleaks v3 is pinned to a specific action commit and uses only the GitHub-provided token. No external scanning token or paid service is required for this personal repository.
 - There is no `|| true` or equivalent suppression in a security check.
 
@@ -140,11 +140,12 @@ CI does not depend on real repository or deployment secrets.
 
 ## Known Exceptions
 
-The backend currently reports exactly three high-severity vulnerable packages in one Prisma tooling/configuration chain:
+The backend currently reports two documented exception chains:
 
-`prisma -> @prisma/config -> deepmerge-ts -> GHSA-ggr8-5vv4-36mx`
+- `prisma -> @prisma/config -> deepmerge-ts -> GHSA-ggr8-5vv4-36mx` (three high findings). Prisma 6.19.3 has no compatible fixed 6.x release, and a major upgrade remains out of scope.
+- `eslint` / `typescript-eslint -> minimatch -> GHSA-g3hv-75wg-m249` (moderate, development-only). The fix is minimatch 11.0.1, while typescript-eslint 8.x requires minimatch 10.x.
 
-Prisma 6.19.3 has no compatible fixed 6.x release, and a major upgrade remains out of scope. The policy is deliberately advisory-specific rather than a blanket package or severity suppression. A newly reported package or a different advisory fails the job.
+The policy is deliberately advisory-specific rather than a blanket package or severity suppression. A newly reported package or a different advisory fails the job.
 
 The local workspace had active development servers holding Prisma's Windows DLL open, so direct `npm ci` could not replace the working `node_modules`. Final clean validation was therefore performed from a temporary copy that excluded all existing dependency directories. The running user processes were not interrupted.
 

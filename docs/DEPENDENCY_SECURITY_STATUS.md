@@ -141,3 +141,69 @@ Backend:
 - no real OpenRouter call was made.
 
 The extension was not modified in this phase.
+
+## Phase 6 — Dependency Re-baseline (2026-11-07)
+
+### Trigger
+
+By November 2026, newly published advisories had invalidated the Phase 1.5 baseline. Both audit gates would fail on any new Pull Request:
+
+| Application | Low | Moderate | High | Critical | Total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Frontend (before) | 0 | 8 | 4 | 1 | 13 |
+| Backend (before) | 0 | 11 | 6 | 1 | 18 |
+
+Relevant findings:
+
+| Package | Severity | Relationship | Advisory summary | Fix |
+| --- | --- | --- | --- | --- |
+| `next` 16.3.3 | Critical | Direct runtime | Several 16.x advisories, including RCE in `next/og` `ImageResponse` and SSG/ISR cache poisoning on self-hosted deployments. Lumen does not import `next/og`. | 16.4.5 (minor) |
+| `sharp` 0.35.4 | High | Through Next.js | librsvg vulnerability | 0.35.5 |
+| `source-map-js` 1.2.1 | High | Through PostCSS | Event-loop DoS | 1.2.2 |
+| `proxy-addr` 2.0.7 | Critical | Through Express | IP spoofing through IPv4-mapped IPv6 trust subnets. Relevant because rate limits key on `req.ip` when `TRUST_PROXY_HOPS` is set. | 2.0.8 |
+| `body-parser` 2.3.0 | High | Through Express | DoS through trailing bytes after a compressed body (`express.json` inflates by default) | 2.4.0 |
+| `zod` 4.3.6 | High | Direct (backend) / via lint tooling (frontend) | Memory exhaustion on oversized constrained collections | 4.6.7 |
+| `brace-expansion`, `qs` | High / moderate | Transitive | CPU DoS / parsing issues | Patch releases |
+
+### Changes Applied
+
+Frontend:
+
+- `next` and `eslint-config-next`: 16.3.3 -> 16.4.5 (still pinned exactly);
+- lockfile-only updates within accepted ranges: `sharp` 0.35.5, `source-map-js` 1.2.2, `zod` 4.6.7, `brace-expansion` 1.1.21 / 5.0.12, `minimatch` 10.2.6, `typescript-eslint` 8.72.1, plus the Babel/Browserslist data packages Next.js pulled in.
+
+Backend:
+
+- `express` floor raised to `^5.3.0` (resolves `body-parser` 2.4.0 and `proxy-addr` 2.0.8);
+- `zod` floor raised to `^4.6.7`;
+- lockfile-only updates: `qs` 6.17.1, `brace-expansion` 1.1.21 / 5.0.12, `eslint` 10.14.0, `typescript-eslint` 8.72.1.
+
+No major version, Prisma version, React version, TypeScript version, schema, score, or product behavior changed.
+
+### Audit After
+
+| Application | Low | Moderate | High | Critical | Total |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Frontend | 0 | 8 | 0 | 0 | 8 |
+| Backend | 0 | 10 | 3 | 0 | 13 |
+
+The remaining findings are two documented chains, both outside application runtime code:
+
+| Chain | Severity | Disposition |
+| --- | --- | --- |
+| `prisma -> @prisma/config -> deepmerge-ts` (`GHSA-ggr8-5vv4-36mx`) | High | Unchanged from Phase 1.5; fixed only in Prisma 7 (major) |
+| `eslint` / `typescript-eslint -> minimatch` (`GHSA-g3hv-75wg-m249`) | Moderate | Development-only lint tooling. The fix is minimatch 11.0.1, but the latest typescript-eslint 8.x requires minimatch 10.x. npm only proposes nonsensical major downgrades. |
+
+The frontend gate (`npm audit --audit-level=high`) passes. The backend `audit:ci` policy now holds an explicit list of advisory-bound exceptions. It still fails for any other package or advisory, fails if an excepted package appears without its documented advisory, and reports exceptions that are no longer needed.
+
+### Related Changes
+
+- The OpenRouter request deadline now covers the full response-body read. Previously the timer was cleared once headers arrived, so a stalled body could hang indefinitely. The deadline is configurable through `OPENROUTER_TIMEOUT_MS` (default 20000), and a regression test streams a body that never finishes.
+- CI now also runs on pushes to `main`, weekly, and on manual dispatch. Dependabot proposes grouped patch/minor updates; majors are ignored.
+- `eslint-config-next` 16.4.5 brings `eslint-plugin-react-hooks` 7.1.1, whose new `set-state-in-effect` rule flags three intentional patterns: reading browser-only state after hydration and the initial dashboard fetch in `use-dashboard-data.ts`, and the invalid-request branch in `extension/connect/page.tsx`. They carry line-scoped, justified suppressions instead of a behavior-changing refactor. Moving browser storage to `useSyncExternalStore` and the fetch to a data-loading pattern remains UX/architecture debt.
+
+### Deferred
+
+- Prisma 7 (removes the deepmerge-ts chain), after the migration-history baseline is repaired.
+- minimatch 11 through a future typescript-eslint/ESLint release.
+- TypeScript 7, ESLint 10 for the frontend, `lucide-react` 1.x, and other majors.

@@ -64,6 +64,7 @@ Backend (`lumen-backend/.env`):
 | `OPENROUTER_BASE_URL` | OpenRouter API base | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_SITE_URL` | Application URL sent to OpenRouter | `http://localhost:3001` |
 | `OPENROUTER_APP_NAME` | Application name sent to OpenRouter | `Lumen` |
+| `OPENROUTER_TIMEOUT_MS` | Deadline for the whole provider request, including the response body | `20000` (default) |
 
 Frontend (`lumen-web/.env.local`):
 
@@ -139,7 +140,7 @@ node -e "JSON.parse(require('node:fs').readFileSync('lumen-extension/manifest.js
 node --test lumen-extension/test/*.test.js
 ```
 
-Pull Requests targeting `main` run these validations automatically through `.github/workflows/ci.yml`. See `docs/TESTING_AND_CI_STATUS.md` for the test strategy and `docs/CI_AND_BRANCH_PROTECTION.md` for recommended repository settings.
+Pull Requests targeting `main`, pushes to `main`, and a weekly schedule run these validations automatically through `.github/workflows/ci.yml`. See `docs/TESTING_AND_CI_STATUS.md` for the test strategy and `docs/CI_AND_BRANCH_PROTECTION.md` for recommended repository settings.
 
 ## Current Limitations
 

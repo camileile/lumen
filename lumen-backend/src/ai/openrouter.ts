@@ -20,6 +20,11 @@ type OpenRouterResponse = {
 
 const MAX_PROVIDER_RESPONSE_BYTES = 64 * 1024;
 
+function providerTimeoutMs(): number {
+  const configured = Number(process.env.OPENROUTER_TIMEOUT_MS);
+  return Number.isSafeInteger(configured) && configured > 0 ? configured : 20_000;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -110,23 +115,29 @@ export async function openrouterAnalyze(input: { url: string; domain: string }):
   if (process.env.OPENROUTER_APP_NAME) headers["X-Title"] = process.env.OPENROUTER_APP_NAME;
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 20000);
+  // The deadline covers both the response headers and the full body read.
+  const timer = setTimeout(() => ctrl.abort(), providerTimeoutMs());
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    signal: ctrl.signal,
-    headers,
-    body: JSON.stringify({
-      model: DEFAULT_MODEL,
-      messages,
-      temperature: 0.2,
-      max_tokens: 220,
-      // opcional: ajuda a “forçar” JSON em alguns modelos compatíveis
-      response_format: { type: "json_object" },
-    }),
-  }).finally(() => clearTimeout(timer));
-
-  const data = await readProviderJson(res);
+  let res: Response;
+  let data: OpenRouterResponse;
+  try {
+    res = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers,
+      body: JSON.stringify({
+        model: DEFAULT_MODEL,
+        messages,
+        temperature: 0.2,
+        max_tokens: 220,
+        // opcional: ajuda a “forçar” JSON em alguns modelos compatíveis
+        response_format: { type: "json_object" },
+      }),
+    });
+    data = await readProviderJson(res);
+  } finally {
+    clearTimeout(timer);
+  }
   if (!res.ok) {
     throw new AppError(502, "PROVIDER_REQUEST_FAILED", "Serviço de análise indisponível");
   }

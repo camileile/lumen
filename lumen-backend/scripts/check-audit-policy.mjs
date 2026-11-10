@@ -1,9 +1,33 @@
 import { spawnSync } from "node:child_process";
 
-const allowedPackages = new Set(["prisma", "@prisma/config", "deepmerge-ts"]);
-const allowedAdvisories = new Set([
-  "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
-]);
+// Each exception is bound to one exact advisory and to the packages npm reports for that chain.
+// Any other vulnerable package or advisory fails the check.
+const exceptions = [
+  {
+    advisory: "https://github.com/advisories/GHSA-ggr8-5vv4-36mx",
+    reason: "Prisma 6 CLI/config tooling pins deepmerge-ts 7.x; fixed only in Prisma 7 (major).",
+    packages: ["prisma", "@prisma/config", "deepmerge-ts"],
+  },
+  {
+    advisory: "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+    reason: "Development-only lint tooling; typescript-eslint 8.x requires minimatch 10.x (fixed in 11.0.1).",
+    packages: [
+      "minimatch",
+      "eslint",
+      "@eslint/config-array",
+      "@eslint/js",
+      "typescript-eslint",
+      "@typescript-eslint/eslint-plugin",
+      "@typescript-eslint/parser",
+      "@typescript-eslint/type-utils",
+      "@typescript-eslint/typescript-estree",
+      "@typescript-eslint/utils",
+    ],
+  },
+];
+
+const allowedPackages = new Set(exceptions.flatMap((exception) => exception.packages));
+const allowedAdvisories = new Set(exceptions.map((exception) => exception.advisory));
 
 const npmCli = process.env.npm_execpath;
 if (!npmCli) {
@@ -53,16 +77,28 @@ if (unexpectedPackages.length > 0 || unexpectedAdvisories.length > 0) {
   process.exit(1);
 }
 
+// A package from an exception list must be explained by an advisory that is actually reported.
+const activeExceptions = exceptions.filter((exception) => encounteredAdvisories.has(exception.advisory));
+const explainedPackages = new Set(activeExceptions.flatMap((exception) => exception.packages));
+const unexplainedPackages = packageNames.filter((name) => !explainedPackages.has(name));
+if (unexplainedPackages.length > 0) {
+  console.error("Backend audit policy failed.");
+  console.error(`Vulnerable packages without their documented advisory: ${unexplainedPackages.join(", ")}`);
+  process.exit(1);
+}
+
+for (const exception of exceptions) {
+  if (!encounteredAdvisories.has(exception.advisory)) {
+    console.log(`Exception no longer needed and can be removed: ${exception.advisory}`);
+  }
+}
+
 if (packageNames.length === 0) {
   console.log("Backend audit policy passed with no known vulnerabilities.");
   process.exit(0);
 }
 
-if (![...allowedAdvisories].every((url) => encounteredAdvisories.has(url))) {
-  console.error("Known vulnerable packages were reported without the documented advisory chain.");
-  process.exit(1);
+console.log("Backend audit policy passed with only documented exceptions:");
+for (const exception of activeExceptions) {
+  console.log(`- ${exception.advisory}: ${exception.reason}`);
 }
-
-console.log(
-  "Backend audit policy passed with only the documented Prisma tooling exception (GHSA-ggr8-5vv4-36mx).",
-);
