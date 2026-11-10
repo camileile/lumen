@@ -1,0 +1,21 @@
+[
+  "background.js",
+  "config.js",
+  "content.js",
+  "domain-classifier.js",
+  "extension-auth.js",
+  "handshake-policy.js",
+  "manifest.json",
+  "observation-policy.js",
+  "privacy-url.js",
+  "popup.css",
+  "popup.html",
+  "popup.js",
+  "score-contract.js",
+  "icon-amarelo.png",
+  "icon-verde.png",
+  "icon-vermelho.png",
+  "lume-amarelo.gif",
+  "lume-verde.gif",
+  "lume-vermelho.gif"
+]
