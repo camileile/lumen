@@ -51,7 +51,7 @@ test("register and authenticated analyze routes enforce their own limits", async
   const analyze = (id: number) => api.request("/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authorization(token) },
-    body: JSON.stringify({ url: `https://news.example/article-${id}` }),
+    body: JSON.stringify({ url: `https://news-${id}.example/article` }),
   });
   assert.equal((await analyze(1)).status, 200);
   assert.equal((await analyze(2)).status, 200);

@@ -31,5 +31,12 @@
     }
   }
 
-  return { sanitizeForAnalysis };
+  function minimizeToSource(value) {
+    const sanitized = sanitizeForAnalysis(value);
+    if (!sanitized) return null;
+    const parsed = new URL(sanitized);
+    return `${parsed.protocol}//${parsed.hostname.toLowerCase()}${parsed.port ? `:${parsed.port}` : ""}/`;
+  }
+
+  return { sanitizeForAnalysis, minimizeToSource };
 });

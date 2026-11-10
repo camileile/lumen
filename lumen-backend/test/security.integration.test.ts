@@ -35,7 +35,7 @@ test("rejects request bodies above the explicit limit without leaking parser det
   assert.equal((response.body as { code: string }).code, "BODY_TOO_LARGE");
 });
 
-test("persists only the sanitized analysis URL and rejects an immediate duplicate", async () => {
+test("persists only the source origin and rejects an immediate duplicate", async () => {
   const { token } = await registerFixtureUser(api);
   api.mockOpenRouter(async () => new Response(JSON.stringify({
     model: "test/provider",
@@ -50,8 +50,8 @@ test("persists only the sanitized analysis URL and rejects an immediate duplicat
   assert.equal(first.status, 200);
   assert.doesNotMatch(JSON.stringify(first.body), /userId|password|hash|access_token|do-not-store/i);
   const stored = await api.prisma.analysis.findFirstOrThrow();
-  assert.equal(stored.url, "https://news.example/article?id=7");
-  assert.doesNotMatch(stored.url, /token|utm|fragment|do-not-store/);
+  assert.equal(stored.url, "https://news.example/");
+  assert.doesNotMatch(stored.url, /article|id=7|token|utm|fragment|do-not-store/);
 
   const duplicate = await api.request("/analyze", init);
   assert.equal(duplicate.status, 429);

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearToken, getToken, me, type AuthUser } from "@/app/lib/auth";
-import { getHistory } from "@/app/lib/history";
+import { deleteHistory, getHistory } from "@/app/lib/history";
 import { mapHistoryToDashboard } from "@/app/lib/dashboardData";
 import { getDashboardMock } from "@/app/lib/dashboardMock";
 import type { DashboardData } from "@/app/lib/types";
@@ -17,7 +17,9 @@ export function useDashboardData() {
   const [demo, setDemo] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     const token = getToken();
@@ -42,12 +44,33 @@ export function useDashboardData() {
     if (!getToken()) return;
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       setDashboardData(mapHistoryToDashboard(await getHistory()));
     } catch {
       setDashboardData(null);
       setError("Não foi possível carregar os dados agora. Verifique sua conexão e tente novamente.");
     } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearHistory = useCallback(async () => {
+    if (!getToken()) return;
+    setLoading(true);
+    setDeleting(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await deleteHistory();
+      setDashboardData(mapHistoryToDashboard(await getHistory()));
+      setNotice(result.deletedCount === 1
+        ? "1 observação foi excluída permanentemente."
+        : `${result.deletedCount} observações foram excluídas permanentemente.`);
+    } catch {
+      setError("Não foi possível excluir o histórico agora. Tente novamente.");
+    } finally {
+      setDeleting(false);
       setLoading(false);
     }
   }, []);
@@ -71,5 +94,5 @@ export function useDashboardData() {
 
   const data = useMemo(() => demo ? getDashboardMock(false) : dashboardData ?? getDashboardMock(true), [dashboardData, demo]);
 
-  return { user, ready, demo, data, hasLoaded: dashboardData !== null, loading, error, refresh, setDemoMode, logout };
+  return { user, ready, demo, data, hasLoaded: dashboardData !== null, loading, deleting, error, notice, refresh, clearHistory, setDemoMode, logout };
 }

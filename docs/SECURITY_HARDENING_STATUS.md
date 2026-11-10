@@ -71,7 +71,7 @@ Unused `activeTab` and `scripting` permissions were removed. `tabs` remains nece
 
 ## Data Minimization
 
-Only the sanitized URL is persisted and sent to OpenRouter. The extension applies the same privacy reduction before network use or writing its `lastUrl` state, while the backend remains the authoritative enforcement boundary. Fragments, embedded credentials, sensitive/tracking query keys, and token-shaped query values are removed. Analysis and history API projections no longer serialize `userId`, internal text fields, relations, passwords, hashes, or tokens. Existing historical rows are not rewritten or deleted.
+Phase 8 tightens the earlier sanitization boundary: only the normalized source origin is persisted, and OpenRouter receives only the normalized domain. Paths, queries, fragments, and embedded credentials are not sent or written for new observations. The extension applies the same reduction before network use or writing its `lastUrl` state, while the backend remains the authoritative enforcement boundary. Analysis and history API projections do not serialize `userId`, internal text fields, relations, passwords, hashes, or tokens. Existing historical rows are not rewritten automatically and can be removed through the authenticated history-deletion control.
 
 ## Log Redaction
 

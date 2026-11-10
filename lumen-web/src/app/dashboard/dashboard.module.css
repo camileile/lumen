@@ -826,6 +826,11 @@
 .statusError, .statusSuccess { width: min(1180px, calc(100% - 32px)); margin: 12px auto; padding: 12px 14px; border-radius: 10px; }
 .statusError { color: #ffcdcd; background: rgba(151,31,31,.24); border: 1px solid rgba(255,124,124,.4); }
 .statusSuccess { color: #d6ffe5; background: rgba(20,117,67,.24); border: 1px solid rgba(91,220,145,.4); }
+.cardTitleRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.cardTitleRow h3 { margin: 0; }
+.dangerBtn { min-height: 38px; padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,124,124,.45); color: #ffd7d7; background: rgba(151,31,31,.2); cursor: pointer; }
+.dangerBtn:hover { background: rgba(151,31,31,.32); }
+.dangerBtn:disabled { cursor: not-allowed; opacity: .6; }
 .helpText { color: #d8deed; font-size: 13px; line-height: 1.55; }
 .srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 

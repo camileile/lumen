@@ -24,3 +24,13 @@ export async function getHistory(): Promise<HistoryResponse> {
     headers: { Authorization: `Bearer ${token}` },
   });
 }
+
+export async function deleteHistory(): Promise<{ deletedCount: number }> {
+  const token = getToken();
+  if (!token) throw new Error("Sem token");
+
+  return apiJson<{ deletedCount: number }>("/history", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}

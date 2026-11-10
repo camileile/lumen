@@ -121,3 +121,15 @@ export async function getHistory(req: AuthedRequest, res: Response) {
       },
     });
 }
+
+export async function deleteHistory(req: AuthedRequest, res: Response) {
+  if (!req.userId) {
+    return res.status(401).json({ error: "Não autenticado" });
+  }
+  if (req.authKind !== "web") {
+    return res.status(403).json({ error: "Esta ação exige uma sessão web", code: "WEB_SESSION_REQUIRED" });
+  }
+
+  const result = await prisma.analysis.deleteMany({ where: { userId: req.userId } });
+  return res.json({ deletedCount: result.count });
+}

@@ -110,6 +110,8 @@ To run the extension locally:
 
 The extension's current development manifest allows the local backend at `http://localhost:3000`.
 
+Automatic observation starts disabled. If enabled in the popup, it observes only locally recognized source domains. Other pages require the explicit **Analyze this page** action. Only the source origin is sent to the backend; see `docs/PRIVACY_AND_OBSERVATION_SCOPE.md`.
+
 ## Validation
 
 Run these commands in both `lumen-backend` and `lumen-web`:

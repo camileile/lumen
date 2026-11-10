@@ -81,7 +81,7 @@ async function readProviderJson(response: Response): Promise<OpenRouterResponse>
 // Free Models Router (muda ao longo do tempo)
 const DEFAULT_MODEL = "openrouter/free";
 
-export async function openrouterAnalyze(input: { url: string; domain: string }): Promise<ORResult> {
+export async function openrouterAnalyze(input: { domain: string }): Promise<ORResult> {
   const baseUrl = process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1";
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new AppError(503, "PROVIDER_UNAVAILABLE", "Serviço de análise indisponível");
