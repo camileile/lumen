@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import { Prisma } from "@prisma/client";
 import prisma from "../db/prisma";
 import { AppError } from "../security/app-error";
 import { signAccessToken } from "../security/jwt";
@@ -16,7 +17,7 @@ async function findUserByEmail(email: string): Promise<UserWithPassword | null> 
   const users = await prisma.$queryRaw<UserWithPassword[]>`
     SELECT "id", "name", "email", "password", "createdAt"
     FROM "User"
-    WHERE lower("email") = lower(${email})
+    WHERE "email" = ${email} COLLATE NOCASE
     LIMIT 1
   `;
   return users[0] ?? null;
@@ -29,12 +30,18 @@ export async function register(name: string, email: string, password: string) {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
-    data: { name, email: normalizedEmail, password: passwordHash },
-    select: SAFE_USER_SELECT,
-  });
-
-  return { user, token: signAccessToken(user.id) };
+  try {
+    const user = await prisma.user.create({
+      data: { name, email: normalizedEmail, password: passwordHash },
+      select: SAFE_USER_SELECT,
+    });
+    return { user, token: signAccessToken(user.id) };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new AppError(409, "EMAIL_ALREADY_REGISTERED", "E-mail já cadastrado");
+    }
+    throw error;
+  }
 }
 
 export async function login(email: string, password: string) {
