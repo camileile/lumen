@@ -12,7 +12,7 @@ Development source remains configured for `http://localhost:3000` and `http://lo
 
 ## Deterministic Packaging
 
-`lumen-extension/runtime-files.json` is the allowlist of shipped files. `scripts/package-extension.mjs` creates a byte-for-byte deterministic ZIP without installing another packaging dependency. It fixes entry order and timestamps, places `manifest.json` at the ZIP root for Chrome Web Store compatibility, generates environment-specific configuration, and rewrites `host_permissions` for that environment.
+`lumen-extension/runtime-files.json` is the allowlist of shipped files. `scripts/package-extension.mjs` creates a byte-for-byte deterministic ZIP without installing another packaging dependency. It fixes entry order and timestamps, normalizes packaged text to LF across operating systems, places `manifest.json` at the ZIP root for Chrome Web Store compatibility, generates environment-specific configuration, and rewrites `host_permissions` for that environment.
 
 CI rebuilds the development ZIP, compares it byte-for-byte with `lumen-web/public/lumen-extension.zip`, validates the production HTTPS contract with non-routable `.invalid` examples, and uploads the development ZIP as a review artifact. CI does not deploy or publish it.
 

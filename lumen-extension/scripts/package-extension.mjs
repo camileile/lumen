@@ -22,6 +22,10 @@ function exactOrigin(value, name, requireHttps) {
   return parsed.origin;
 }
 
+export function normalizeRuntimeText(data) {
+  return Buffer.from(Buffer.from(data).toString("utf8").replace(/\r\n?/g, "\n"));
+}
+
 function crc32(buffer) {
   let crc = 0xffffffff;
   for (const byte of buffer) {
@@ -95,11 +99,14 @@ export async function packageExtension(options) {
 
   const entries = [];
   for (const filename of runtimeFiles) {
-    const data = filename === "config.js"
+    let data = filename === "config.js"
       ? Buffer.from(config)
       : filename === "manifest.json"
         ? Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`)
         : await readFile(path.join(extensionRoot, filename));
+    if (/\.(?:css|html|js|json)$/i.test(filename)) {
+      data = normalizeRuntimeText(data);
+    }
     entries.push({ name: filename, data });
   }
   const output = path.resolve(options.output);

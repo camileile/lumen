@@ -12,7 +12,7 @@ async function packager() {
 test("development packages are deterministic", async (context) => {
   const directory = await mkdtemp(path.join(tmpdir(), "lumen-extension-package-"));
   context.after(() => rm(directory, { recursive: true, force: true }));
-  const { packageExtension } = await packager();
+  const { normalizeRuntimeText, packageExtension } = await packager();
   const common = {
     channel: "development",
     apiUrl: "http://localhost:3000",
@@ -26,6 +26,7 @@ test("development packages are deterministic", async (context) => {
   assert.deepEqual(first, await readFile(path.join(directory, "second.zip")));
   assert.equal(first.includes(Buffer.from("manifest.json")), true);
   assert.equal(first.includes(Buffer.from("lumen-extension/manifest.json")), false);
+  assert.equal(normalizeRuntimeText("first\r\nsecond\rthird\n").toString(), "first\nsecond\nthird\n");
 });
 
 test("production packages require explicit HTTPS origins", async () => {
