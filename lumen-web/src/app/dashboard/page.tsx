@@ -11,6 +11,8 @@ import { ScoreCard } from "./components/score-card";
 import { TutorialDialog, type TourStep } from "./components/tutorial-dialog";
 import { useDashboardData } from "./use-dashboard-data";
 import { useExtensionConnection } from "./use-extension-connection";
+import { useExtensionSessions } from "./use-extension-sessions";
+import { ExtensionSessionsCard } from "./components/extension-sessions-card";
 import styles from "./dashboard.module.css";
 
 const TOUR_KEY = "lumen_dashboard_tour_done_v1";
@@ -26,6 +28,7 @@ const steps: TourStep[] = [
 export default function DashboardPage() {
   const dashboard = useDashboardData();
   const extension = useExtensionConnection();
+  const extensionSessions = useExtensionSessions(dashboard.ready && Boolean(dashboard.user) && !dashboard.demo);
   const [name, setName] = useState("Lumen");
   const [draftName, setDraftName] = useState("Lumen");
   const [editingName, setEditingName] = useState(false);
@@ -86,6 +89,13 @@ export default function DashboardPage() {
           void dashboard.clearHistory();
         }
       }} />
+      {!dashboard.demo && <ExtensionSessionsCard {...extensionSessions}
+        onRefresh={() => void extensionSessions.refresh()}
+        onRevoke={(sessionId) => {
+          if (window.confirm("Revogar o acesso desta instalação da extensão?")) {
+            void extensionSessions.revoke(sessionId).then(() => extension.refresh());
+          }
+        }} />}
       <HelpCard onOpenTutorial={() => setTourOpen(true)} />
     </main>}
 

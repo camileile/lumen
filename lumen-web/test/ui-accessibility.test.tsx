@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AuthSubmitButton, FormAlert, PasswordField } from "../src/app/components/auth-controls";
 import { TutorialDialog, type TourStep } from "../src/app/dashboard/components/tutorial-dialog";
 import { HistoryDeleteButton } from "../src/app/dashboard/components/history-delete-button";
+import { ExtensionSessionRevokeButton } from "../src/app/dashboard/components/extension-session-revoke-button";
 import { getDialogKeyAction, restoreFocus } from "../src/app/lib/ui";
 
 const authStyles = { label: "label", input: "input", passwordWrap: "wrap", showBtn: "toggle" };
@@ -82,4 +83,10 @@ test("history deletion is an explicit disabled-capable button", () => {
   const html = renderToStaticMarkup(<HistoryDeleteButton deleting onDelete={noop} />);
   assert.match(html, /<button[^>]*disabled=""/);
   assert.match(html, /Excluir histórico|Excluindo/);
+});
+
+test("device session revocation is an explicit disabled-capable button", () => {
+  const html = renderToStaticMarkup(<ExtensionSessionRevokeButton revoking onRevoke={noop} />);
+  assert.match(html, /<button[^>]*disabled=""/);
+  assert.match(html, /Revogando/);
 });
