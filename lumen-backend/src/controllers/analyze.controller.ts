@@ -6,10 +6,10 @@ import { openrouterAnalyze } from "../ai/openrouter";
 import {
   calculateScore,
   Category,
-  normalizeCategory,
   SCORE_METHOD_VERSION,
   SCORE_WINDOW_SIZE,
 } from "../domain/score";
+import { findRecentValidCategories } from "../repositories/analysis.repository";
 import { classifyHostname } from "../domain/source-classifier";
 import { sanitizeAnalysisUrl } from "../security/analysis-url";
 import { AppError } from "../security/app-error";
@@ -35,17 +35,7 @@ function summaryByLabel(label: Category, source: "ai" | "local", knownSource = t
 }
 
 async function computeGlobalScoreForUser(userId: string, currentLabel: Category) {
-  const last = await prisma.analysis.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-    select: { category: true },
-  });
-
-  const history = last
-    .map((analysis) => normalizeCategory(analysis.category))
-    .filter((category): category is Category => category !== null)
-    .slice(0, SCORE_WINDOW_SIZE - 1)
-    .reverse();
+  const history = (await findRecentValidCategories(userId, SCORE_WINDOW_SIZE - 1)).reverse();
 
   const scoreGlobal = calculateScore([...history, currentLabel]);
   if (scoreGlobal === null) throw new Error("Não foi possível calcular o score");

@@ -212,3 +212,30 @@ test("uses only the latest 20 valid categories for current score", async () => {
   const response = await history(token);
   assert.equal((response.body as { score: number }).score, 100);
 });
+
+test("bounds metric history and reports when older observations were omitted", async () => {
+  const { user, token } = await registerFixtureUser(api);
+  await api.prisma.analysis.createMany({
+    data: Array.from({ length: 21 }, (_, index) =>
+      analysisFixture(user.id, {
+        id: `bounded-${index}`,
+        category: "A",
+        score: 100,
+        createdAt: `2026-09-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
+      }),
+    ),
+  });
+
+  process.env.HISTORY_METRICS_MAX_OBSERVATIONS = "20";
+  try {
+    const response = await history(token);
+    assert.equal(response.status, 200);
+    assert.deepEqual((response.body as { historyWindow: unknown }).historyWindow, {
+      maxObservations: 20,
+      returnedObservations: 20,
+      truncated: true,
+    });
+  } finally {
+    process.env.HISTORY_METRICS_MAX_OBSERVATIONS = "1000";
+  }
+});

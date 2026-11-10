@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { PrismaClient } from "@prisma/client";
+import { deployMigrations } from "./migration-test-utils";
 
 const nativeFetch = globalThis.fetch.bind(globalThis);
 const loadModule = createRequire(__filename);
@@ -31,37 +32,6 @@ function sqliteUrl(databasePath: string): string {
   return `file:${databasePath.replace(/\\/g, "/")}`;
 }
 
-async function createSchema(prisma: PrismaClient): Promise<void> {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "User" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "name" TEXT NOT NULL DEFAULT '',
-      "email" TEXT NOT NULL,
-      "password" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-  await prisma.$executeRawUnsafe(
-    'CREATE UNIQUE INDEX "User_email_key" ON "User"("email")',
-  );
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE "Analysis" (
-      "id" TEXT NOT NULL PRIMARY KEY,
-      "url" TEXT NOT NULL,
-      "domain" TEXT NOT NULL,
-      "category" TEXT NOT NULL,
-      "score" INTEGER NOT NULL,
-      "summary" TEXT NOT NULL,
-      "text" TEXT NOT NULL,
-      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "userId" TEXT NOT NULL,
-      CONSTRAINT "Analysis_userId_fkey"
-        FOREIGN KEY ("userId") REFERENCES "User" ("id")
-        ON DELETE RESTRICT ON UPDATE CASCADE
-    )
-  `);
-}
-
 export async function createTestApi(
   suiteName: string,
   options: {
@@ -70,10 +40,12 @@ export async function createTestApi(
     analyzeLimit?: number;
     extensionAuthorizeLimit?: number;
     extensionExchangeLimit?: number;
+    historyMetricsLimit?: number;
   } = {},
 ): Promise<TestApi> {
   const directory = mkdtempSync(path.join(tmpdir(), `lumen-${suiteName}-`));
   const databasePath = path.join(directory, "test.db");
+  closeSync(openSync(databasePath, "a"));
 
   process.env.DATABASE_URL = sqliteUrl(databasePath);
   process.env.JWT_SECRET = TEST_JWT_SECRET;
@@ -86,9 +58,10 @@ export async function createTestApi(
   process.env.RATE_LIMIT_EXTENSION_AUTHORIZE_MAX = String(options.extensionAuthorizeLimit ?? 1000);
   process.env.RATE_LIMIT_EXTENSION_EXCHANGE_MAX = String(options.extensionExchangeLimit ?? 1000);
   process.env.ANALYZE_DUPLICATE_WINDOW_SECONDS = "30";
+  process.env.HISTORY_METRICS_MAX_OBSERVATIONS = String(options.historyMetricsLimit ?? 1000);
 
+  deployMigrations(process.env.DATABASE_URL);
   const prisma = (loadModule("../../src/db/prisma") as { default: PrismaClient }).default;
-  await createSchema(prisma);
 
   const { app } = loadModule("../../src/app") as typeof import("../../src/app");
   const server = await new Promise<Server>((resolve) => {

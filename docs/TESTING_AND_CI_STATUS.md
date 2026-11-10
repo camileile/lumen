@@ -4,7 +4,7 @@
 
 Phase 3 establishes automated regression coverage and Pull Request validation without changing the reliability-score methodology, authentication architecture, database schema, product layout, OpenRouter provider, or deployment process.
 
-The suite grew from 14 backend domain tests to 68 automated test cases across the backend, frontend, and extension. All fixtures use fictitious `.invalid` identities and example URLs.
+Phase 3 grew the initial 14 backend domain tests to 68 automated cases. Subsequent phases expanded that foundation; Phase 7 finishes with 95 backend, 24 frontend, and 21 extension cases (140 total). All fixtures use fictitious `.invalid` identities and example URLs.
 
 ## Testing Strategy
 
@@ -90,9 +90,9 @@ Large DOM snapshots and component-library dependencies were intentionally avoide
 
 ## Test Database Strategy
 
-Each backend integration-test file creates a unique directory with `mkdtemp` under the operating system's temporary directory and uses a dedicated `test.db`. The current Prisma Client executes explicit `CREATE TABLE` statements matching the existing schema, because the repository's incomplete migration history cannot safely initialize a fresh database.
+Each backend integration-test file creates a unique directory with `mkdtemp` under the operating system's temporary directory and uses a dedicated `test.db`. Since Phase 7, the harness initializes every database with the committed `prisma migrate deploy` chain. It no longer duplicates the schema with handwritten `CREATE TABLE` statements.
 
-The test harness never references `prisma/dev.db`, never resets a developer database, and removes the temporary database and directory after the suite. This is test infrastructure only; it does not change the Prisma schema or create migration files.
+Dedicated migration integration tests prove both a clean deployment and the documented baseline path for an existing current-schema database. A collision fixture also proves that case-insensitive duplicate emails block the index migration without deleting either row. The harness never references `prisma/dev.db`, never resets a developer database, and removes each temporary database and directory after the suite.
 
 ## Provider Mocking
 
@@ -114,7 +114,7 @@ The extension suite currently reports pass/fail without a committed coverage thr
 `.github/workflows/ci.yml` runs on Pull Requests targeting `main`, on pushes to `main`, weekly on Mondays at 09:00 UTC, and on manual dispatch, with cancellation of superseded runs. The scheduled run exists so newly published advisories fail visibly even when no Pull Request is open (added in Phase 6). Dependabot (`.github/dependabot.yml`) proposes grouped weekly patch/minor updates for both Node applications and monthly GitHub Actions updates; major upgrades are ignored and planned separately.
 
 - **Frontend:** Node setup/cache, clean install, lint, typecheck, tests, build, and npm audit.
-- **Backend:** Node setup/cache, clean install, Prisma Client generation, lint, typecheck, tests, build, and the explicit audit policy.
+- **Backend:** Node setup/cache, clean install, Prisma Client generation, clean migration deployment, lint, typecheck, tests, build, and the explicit audit policy.
 - **Extension:** manifest parse, syntax validation for every JavaScript file, logic tests, and verification that the downloadable ZIP matches all runtime source files.
 - **Secret scan:** full PR history checkout and Gitleaks scan of the Pull Request commits.
 
@@ -147,7 +147,7 @@ The backend currently reports two documented exception chains:
 
 The policy is deliberately advisory-specific rather than a blanket package or severity suppression. A newly reported package or a different advisory fails the job.
 
-The local workspace had active development servers holding Prisma's Windows DLL open, so direct `npm ci` could not replace the working `node_modules`. Final clean validation was therefore performed from a temporary copy that excluded all existing dependency directories. The running user processes were not interrupted.
+Phase 7 keeps the same isolated-database strategy and adds migrations as an executable CI contract. Historical validation notes from earlier phases remain in their phase-specific documents.
 
 ## Branch Protection Recommendations
 
@@ -155,6 +155,6 @@ See `docs/CI_AND_BRANCH_PROTECTION.md`. No repository setting was modified autom
 
 ## Deferred E2E Work
 
-A browser E2E stack was not added. Playwright or Cypress would add browser downloads, process orchestration, and a second style of test infrastructure for one flow while the database migration history is still incomplete.
+A browser E2E stack was not added. Playwright or Cypress would add browser downloads, process orchestration, and a second style of test infrastructure for one flow.
 
-The proposed later E2E path is: register with a disposable account -> establish session -> open dashboard -> confirm the empty-history state -> analyze through a fully stubbed provider -> confirm persisted history. It should be introduced after the clean database initialization path is repaired.
+The proposed later E2E path is: register with a disposable account -> establish session -> open dashboard -> confirm the empty-history state -> analyze through a fully stubbed provider -> confirm persisted history. The clean database prerequisite is now complete; browser orchestration remains the deferred work.

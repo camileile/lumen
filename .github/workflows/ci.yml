@@ -70,6 +70,8 @@ jobs:
 
       - run: npm ci
       - run: npm run prisma:generate
+      - name: Deploy migrations to a clean CI database
+        run: npm run prisma:migrate:deploy
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test

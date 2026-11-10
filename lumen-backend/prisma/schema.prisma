@@ -29,4 +29,7 @@ model Analysis {
 
   userId String
   user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt], map: "Analysis_userId_createdAt_idx")
+  @@index([userId, url, createdAt], map: "Analysis_userId_url_createdAt_idx")
 }
