@@ -9,6 +9,18 @@ import {
   SCORE_METHOD_VERSION,
   SCORE_WINDOW_SIZE,
 } from "../domain/score";
+import { findRecentMetricObservations } from "../repositories/analysis.repository";
+
+const DEFAULT_HISTORY_METRICS_MAX_OBSERVATIONS = 1000;
+const HARD_HISTORY_METRICS_MAX_OBSERVATIONS = 5000;
+
+function historyMetricsLimit(): number {
+  const configured = Number(process.env.HISTORY_METRICS_MAX_OBSERVATIONS);
+  if (!Number.isSafeInteger(configured) || configured < SCORE_WINDOW_SIZE) {
+    return DEFAULT_HISTORY_METRICS_MAX_OBSERVATIONS;
+  }
+  return Math.min(configured, HARD_HISTORY_METRICS_MAX_OBSERVATIONS);
+}
 
 function distributionFromCategories(categories: readonly Category[]) {
   const counts: Record<Category, number> = { A: 0, B: 0, C: 0, D: 0 };
@@ -59,7 +71,8 @@ export async function getHistory(req: AuthedRequest, res: Response) {
       return res.status(401).json({ error: "Não autenticado" });
     }
 
-    const [latestItems, observations] = await Promise.all([
+    const metricsLimit = historyMetricsLimit();
+    const [latestItems, metricWindow] = await Promise.all([
       prisma.analysis.findMany({
         where: { userId: req.userId },
         orderBy: { createdAt: "desc" },
@@ -74,11 +87,7 @@ export async function getHistory(req: AuthedRequest, res: Response) {
           createdAt: true,
         },
       }),
-      prisma.analysis.findMany({
-        where: { userId: req.userId },
-        orderBy: { createdAt: "asc" },
-        select: { category: true, createdAt: true },
-      }),
+      findRecentMetricObservations(req.userId, metricsLimit),
     ]);
 
     const items = latestItems.flatMap((analysis) => {
@@ -86,7 +95,7 @@ export async function getHistory(req: AuthedRequest, res: Response) {
       return label ? [{ ...analysis, label }] : [];
     });
 
-    const metrics = buildHistoryMetrics(observations);
+    const metrics = buildHistoryMetrics(metricWindow.observations);
     const { counts, distribution } = distributionFromCategories(metrics.categories);
     const presentation = userFacingSummary(metrics.currentScore, counts);
 
@@ -104,6 +113,11 @@ export async function getHistory(req: AuthedRequest, res: Response) {
         version: SCORE_METHOD_VERSION,
         observationWindow: SCORE_WINDOW_SIZE,
         basis: "source-domain-category-history",
+      },
+      historyWindow: {
+        maxObservations: metricsLimit,
+        returnedObservations: metricWindow.observations.length,
+        truncated: metricWindow.truncated,
       },
     });
 }
