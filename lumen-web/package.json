@@ -19,14 +19,14 @@
     "test:coverage": "npm run test:compile && node --experimental-test-coverage --test-coverage-include=.test-dist/src/app/lib/*.js --test .test-dist/test/dashboardData.test.js .test-dist/test/extensionAuth.test.js .test-dist/test/api.test.js .test-dist/test/ui-accessibility.test.js .test-dist/test/ui-contracts.test.js"
   },
   "dependencies": {
-    "lucide-react": "^0.575.0",
+    "lucide-react": "^0.577.0",
     "next": "16.4.5",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "recharts": "^3.7.0"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
