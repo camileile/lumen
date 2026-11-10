@@ -60,6 +60,7 @@ Backend (`lumen-backend/.env`):
 | `JWT_ISSUER` / `JWT_AUDIENCE` | Access-token contract | `lumen-api` / `lumen-web-extension` |
 | `RATE_LIMIT_*` | Register/login/analyze maxima and windows | See `.env.example` |
 | `ANALYZE_DUPLICATE_WINDOW_SECONDS` | Same-user duplicate suppression | `30` |
+| `HISTORY_METRICS_MAX_OBSERVATIONS` | Maximum valid observations used for dashboard history metrics (20–5000) | `1000` |
 | `OPENROUTER_API_KEY` | Optional OpenRouter credential | Obtain your own key |
 | `OPENROUTER_BASE_URL` | OpenRouter API base | `https://openrouter.ai/api/v1` |
 | `OPENROUTER_SITE_URL` | Application URL sent to OpenRouter | `http://localhost:3001` |
@@ -83,6 +84,15 @@ Start the backend on `http://localhost:3000`:
 cd lumen-backend
 npm run dev
 ```
+
+For a new database, apply the committed Prisma migrations before starting the API:
+
+```bash
+cd lumen-backend
+npm run prisma:migrate:deploy
+```
+
+An existing pre-migration Lumen database must not run the baseline blindly. Back it up, run `npm run db:preflight`, and follow the reviewed baseline procedure in `docs/DATA_FOUNDATION_STATUS.md`.
 
 Start the frontend on `http://localhost:3001` in a second terminal:
 
@@ -146,5 +156,5 @@ Pull Requests targeting `main`, pushes to `main`, and a weekly schedule run thes
 
 - Analysis is based mainly on the URL's domain and static source lists.
 - Complete article-content analysis and factual verification are not implemented.
-- The scoring and classification methodology still need dedicated validation and tests.
+- SQLite remains appropriate for local/prototype use; a production database decision depends on measured concurrency and deployment requirements.
 - The project is being modernized incrementally; see `docs/PROJECT_AUDIT.md` and `docs/FOUNDATION_STATUS.md` for scope and remaining work.
