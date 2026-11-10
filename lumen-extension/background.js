@@ -1,4 +1,4 @@
-importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js", "extension-auth.js");
+importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js", "observation-policy.js", "extension-auth.js");
 
 const API_URL = "http://localhost:3000";
 
@@ -6,7 +6,15 @@ const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, meth
   LumenScoreContract;
 const { classifyUrl } = LumenDomainClassifier;
 const { createChallengeRegistry, isTrustedDashboardUrl } = LumenHandshakePolicy;
+const {
+  automaticObservationKey,
+  createNavigationTracker,
+  localAnalysisKeys,
+  shouldAutomaticallyObserve,
+  updatedTabUrl,
+} = LumenObservationPolicy;
 const connectChallenges = createChallengeRegistry();
+const navigationTracker = createNavigationTracker();
 
 function isExtensionSender(sender) {
   return sender?.id === chrome.runtime.id && String(sender?.url || "").startsWith(`chrome-extension://${chrome.runtime.id}/`);
@@ -128,13 +136,22 @@ async function applyPayloadToUI(tabId, payload, overlayAtivo) {
   }
 }
 
-async function processUrlForTab(tabId, url) {
+async function processUrlForTab(tabId, url, options = {}) {
   const sanitizedUrl = LumenPrivacyUrl.sanitizeForAnalysis(url);
-  if (!sanitizedUrl || !classifyUrl(sanitizedUrl)) return;
+  const classification = sanitizedUrl ? classifyUrl(sanitizedUrl) : null;
+  if (!sanitizedUrl || !classification) return { processed: false, invalid: true };
 
-  // evita reprocessar mesma url
-  const { lastUrl } = await chrome.storage.local.get(["lastUrl"]);
-  if (lastUrl === sanitizedUrl) return;
+  if (options.automatic) {
+    const settings = await chrome.storage.local.get([automaticObservationKey]);
+    if (!shouldAutomaticallyObserve(settings[automaticObservationKey], classification)) {
+      return { processed: false, policySkipped: true };
+    }
+  }
+
+  const generation = navigationTracker.begin(tabId, sanitizedUrl);
+  if (generation === null) return { processed: false, duplicate: true };
+  const sourceUrl = LumenPrivacyUrl.minimizeToSource(sanitizedUrl);
+  if (!sourceUrl) return { processed: false, invalid: true };
 
   const { overlayAtivo = true } = await chrome.storage.local.get(["overlayAtivo"]);
 
@@ -147,7 +164,7 @@ async function processUrlForTab(tabId, url) {
     summary: local.summary,
     domain: local.domain,
     historico: local.historico,
-    lastUrl: sanitizedUrl,
+    lastUrl: sourceUrl,
     lastMode: local.mode, // "local"
     lastUpdatedAt: Date.now(),
   };
@@ -156,12 +173,13 @@ async function processUrlForTab(tabId, url) {
 
   // 2) REMOTO (final) -> se der certo, sobrescreve score/category/summary/mode
   try {
-    const remote = await analyzeRemote(sanitizedUrl);
+    const remote = await analyzeRemote(sourceUrl);
 
     // evita race condition: se o usuário já mudou de site enquanto a IA respondia,
     // não atualiza com resultado velho
-    const { lastUrl: currentLastUrl } = await chrome.storage.local.get(["lastUrl"]);
-    if (currentLastUrl && currentLastUrl !== sanitizedUrl) return;
+    if (!navigationTracker.isCurrent(tabId, sanitizedUrl, generation)) {
+      return { processed: true, staleResponseIgnored: true };
+    }
 
     payload = {
       ...payload,
@@ -179,18 +197,34 @@ async function processUrlForTab(tabId, url) {
     // backend offline/sem token/erro IA -> mantém local
     console.warn("Remote analyze indisponível; mantendo resultado local.");
   }
+
+  return { processed: true };
 }
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   const tab = await chrome.tabs.get(activeInfo.tabId);
   if (!tab?.id || !tab?.url) return;
-  processUrlForTab(tab.id, tab.url);
+  processUrlForTab(tab.id, tab.url, { automatic: true });
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete" && tab?.url) processUrlForTab(tabId, tab.url);
-  if (changeInfo.url) processUrlForTab(tabId, changeInfo.url);
+  const url = updatedTabUrl(changeInfo, tab);
+  if (url) processUrlForTab(tabId, url, { automatic: true });
 });
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  navigationTracker.clear(tabId);
+});
+
+async function minimizeLegacyStoredUrl() {
+  const { lastUrl } = await chrome.storage.local.get(["lastUrl"]);
+  if (typeof lastUrl !== "string") return;
+  const sourceUrl = LumenPrivacyUrl.minimizeToSource(lastUrl);
+  if (sourceUrl) await chrome.storage.local.set({ lastUrl: sourceUrl });
+  else await chrome.storage.local.remove(["lastUrl"]);
+}
+
+void minimizeLegacyStoredUrl().catch(() => {});
 
 async function startAccountConnection() {
   const installationId = await LumenExtensionAuth.ensureInstallationId(chrome.storage.local);
@@ -235,6 +269,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === "LOGOUT_EXTENSION") {
       if (!isExtensionSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
       await LumenExtensionAuth.clearSession(chrome.storage.local, chrome.storage.session);
+      sendResponse({ ok: true });
+      return;
+    }
+
+    if (msg.type === "CLEAR_LOCAL_ANALYSIS_DATA") {
+      if (!isExtensionSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
+      await chrome.storage.local.remove(localAnalysisKeys);
+      navigationTracker.clearAll();
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) await sendOverlayUpdateToTab(tab.id, { overlayAtivo: false });
       sendResponse({ ok: true });
       return;
     }
@@ -296,13 +340,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
 
     if (msg.type === "FORCE_ANALYZE_ACTIVE_TAB") {
+      if (!isExtensionSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab?.id || !tab?.url) return sendResponse({ ok: false, error: "Sem aba/URL" });
 
-      await chrome.storage.local.set({ lastUrl: null }); // força reprocessar
-      await processUrlForTab(tab.id, tab.url);
-
-      sendResponse({ ok: true });
+      const result = await processUrlForTab(tab.id, tab.url);
+      sendResponse({ ok: true, ...result });
       return;
     }
 

@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["score-contract.js", "handshake-policy.js", "content.js"],
+      "js": ["score-contract.js", "handshake-policy.js", "privacy-url.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

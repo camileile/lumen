@@ -8,6 +8,15 @@ const accountStatusEl = document.getElementById("accountStatus");
 const accountIdentityEl = document.getElementById("accountIdentity");
 const connectAccountBtn = document.getElementById("connectAccount");
 const logoutAccountBtn = document.getElementById("logoutAccount");
+const monitoringStatusEl = document.getElementById("monitoringStatus");
+const toggleMonitoringBtn = document.getElementById("toggleMonitoring");
+const clearLocalDataBtn = document.getElementById("clearLocalData");
+
+function renderMonitoring(enabled) {
+  monitoringStatusEl.innerText = enabled ? "Ativada para fontes reconhecidas" : "Desativada";
+  toggleMonitoringBtn.innerText = enabled ? "Desativar observação automática" : "Ativar observação automática";
+  toggleMonitoringBtn.setAttribute("aria-pressed", String(enabled));
+}
 
 function renderAccount(status) {
   const connected = status?.ok && status.connected;
@@ -76,8 +85,26 @@ function readState() {
 
   const ativo = st.overlayAtivo ?? true;
   toggleBtn.innerText = ativo ? "Desativar Overlay" : "Ativar Overlay";
+  const monitoring = await chrome.storage.local.get(["automaticObservationEnabled"]);
+  renderMonitoring(monitoring.automaticObservationEnabled === true);
   await refreshAccount();
 })();
+
+toggleMonitoringBtn.addEventListener("click", async () => {
+  const current = await chrome.storage.local.get(["automaticObservationEnabled"]);
+  const enabled = current.automaticObservationEnabled !== true;
+  await chrome.storage.local.set({ automaticObservationEnabled: enabled });
+  renderMonitoring(enabled);
+});
+
+clearLocalDataBtn.addEventListener("click", async () => {
+  if (!window.confirm("Limpar os resultados e o histórico de score guardados neste navegador?")) return;
+  clearLocalDataBtn.disabled = true;
+  const result = await chrome.runtime.sendMessage({ type: "CLEAR_LOCAL_ANALYSIS_DATA" }).catch(() => ({ ok: false }));
+  clearLocalDataBtn.disabled = false;
+  if (result?.ok) setUI({ score: null, lastMode: "", domain: "", category: "" });
+  else estadoEl.innerText = "Não foi possível limpar";
+});
 
 connectAccountBtn.addEventListener("click", async () => {
   connectAccountBtn.disabled = true;
@@ -113,7 +140,7 @@ toggleBtn.addEventListener("click", () => {
   });
 });
 
-// Reanalisar: dispara e aguarda o storage mudar (evita ler cedo demais)
+// Analisa explicitamente e aguarda o storage mudar (evita ler cedo demais).
 document.getElementById("reanalyze").addEventListener("click", async () => {
   const before = await readState();
   estadoEl.innerText = "Reanalisando...";
@@ -121,7 +148,18 @@ document.getElementById("reanalyze").addEventListener("click", async () => {
   modeEl.innerText = "";
   domainEl.innerText = "";
 
-  chrome.runtime.sendMessage({ type: "FORCE_ANALYZE_ACTIVE_TAB" }, async () => {
+  chrome.runtime.sendMessage({ type: "FORCE_ANALYZE_ACTIVE_TAB" }, async (result) => {
+    if (!result?.ok) {
+      setUI(before);
+      modeEl.innerText = "Não foi possível analisar esta página";
+      return;
+    }
+    if (result.duplicate) {
+      setUI(before);
+      modeEl.innerText = "Esta página já foi analisada";
+      return;
+    }
+
     // Poll curto até mudar lastUpdatedAt (ou score) — máximo ~2.5s
     const start = Date.now();
     while (Date.now() - start < 2500) {

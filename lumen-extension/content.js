@@ -208,9 +208,11 @@ async function boot() {
     "lastMode",
     "lumePos",
     "overlayAtivo",
+    "lastUrl",
   ]);
 
   if (st.overlayAtivo === false) return removeOverlay();
+  if (!st.lastUrl || LumenPrivacyUrl.minimizeToSource(window.location.href) !== st.lastUrl) return removeOverlay();
 
   ensureOverlay(
     {

@@ -46,13 +46,21 @@
       <button id="logoutAccount" class="btn secondary" hidden>Sair da conta</button>
     </section>
 
+    <section class="card privacyCard" aria-labelledby="monitoring-title">
+      <div id="monitoring-title" class="label">Observação automática</div>
+      <strong id="monitoringStatus">Desativada</strong>
+      <span class="accountIdentity muted">Quando ativada, observa somente fontes reconhecidas. Outros sites exigem análise manual.</span>
+      <button id="toggleMonitoring" class="btn secondary" aria-pressed="false">Ativar observação automática</button>
+    </section>
+
     <section class="actions">
       <button id="toggleOverlay" class="btn">Carregando...</button>
-      <button id="reanalyze" class="btn secondary">Reanalisar agora</button>
+      <button id="reanalyze" class="btn secondary">Analisar esta página</button>
+      <button id="clearLocalData" class="btn danger">Limpar dados locais</button>
     </section>
 
     <div class="footer muted">
-      <span id="hint">Estimativa automatizada baseada no domínio. Não é checagem factual.</span>
+      <span id="hint">Somente o domínio é compartilhado. Não é checagem factual.</span>
     </div>
   </div>
 
