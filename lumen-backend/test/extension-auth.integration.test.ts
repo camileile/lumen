@@ -40,6 +40,21 @@ async function exchange(code: string, installationId: string) {
   });
 }
 
+async function refresh(refreshToken: string, installationId: string) {
+  return api.request("/extension/session/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken, installationId }),
+  });
+}
+
+async function logout(accessToken: string) {
+  return api.request("/extension/session/logout", {
+    method: "POST",
+    headers: authorization(accessToken),
+  });
+}
+
 test("requires an authenticated web session to create an authorization", async () => {
   assert.equal((await authorize("invalid-token", installationA, "unauthenticated")).status, 401);
 });
@@ -52,16 +67,26 @@ test("exchanges a valid one-time authorization for a safe extension session", as
 
   const result = await exchange(code, installationA);
   assert.equal(result.status, 200);
-  const body = result.body as { token: string; user: { id: string; email: string }; expiresInSeconds: number };
+  const body = result.body as {
+    accessToken: string;
+    refreshToken: string;
+    user: { id: string; email: string };
+    accessExpiresInSeconds: number;
+    refreshExpiresAt: string;
+  };
   assert.equal(body.user.id, user.id);
-  assert.equal(body.expiresInSeconds, 86_400);
+  assert.equal(body.accessExpiresInSeconds, 900);
+  assert.ok(new Date(body.refreshExpiresAt).getTime() > Date.now());
   assert.doesNotMatch(JSON.stringify(body.user), /password|hash|token/i);
 
-  const claims = verifyExtensionSessionToken(body.token);
+  const claims = verifyExtensionSessionToken(body.accessToken);
   assert.equal(claims.userId, user.id);
   assert.equal(claims.installationId, installationA);
-  assert.equal((await api.request("/auth/me", { headers: authorization(body.token) })).status, 200);
-  assert.equal((await api.request("/history", { headers: authorization(body.token) })).status, 200);
+  assert.match(claims.sessionId, /^[0-9a-f-]{36}$/i);
+  assert.equal((await api.request("/auth/me", { headers: authorization(body.accessToken) })).status, 200);
+  assert.equal((await api.request("/history", { headers: authorization(body.accessToken) })).status, 200);
+  const stored = await api.prisma.extensionSession.findUniqueOrThrow({ where: { id: claims.sessionId } });
+  assert.notEqual(stored.refreshTokenHash, body.refreshToken);
 });
 
 test("rejects replay and installation mismatch", async () => {
@@ -78,7 +103,7 @@ test("an extension session cannot authorize another extension", async () => {
   const created = await authorize(token, installationA, "web_only_authorize");
   const code = (created.body as { authorizationCode: string }).authorizationCode;
   const exchanged = await exchange(code, installationA);
-  const extensionToken = (exchanged.body as { token: string }).token;
+  const extensionToken = (exchanged.body as { accessToken: string }).accessToken;
 
   assert.equal((await authorize(extensionToken, installationB, "extension_denied")).status, 403);
 });
@@ -89,12 +114,92 @@ test("two installations get independent sessions for the same account", async ()
   const createdB = await authorize(token, installationB, "device_beta_12345");
   const sessionA = await exchange((createdA.body as { authorizationCode: string }).authorizationCode, installationA);
   const sessionB = await exchange((createdB.body as { authorizationCode: string }).authorizationCode, installationB);
-  const tokenA = (sessionA.body as { token: string }).token;
-  const tokenB = (sessionB.body as { token: string }).token;
+  const tokenA = (sessionA.body as { accessToken: string }).accessToken;
+  const tokenB = (sessionB.body as { accessToken: string }).accessToken;
 
   assert.notEqual(tokenA, tokenB);
   assert.equal(verifyExtensionSessionToken(tokenA).userId, user.id);
   assert.equal(verifyExtensionSessionToken(tokenB).userId, user.id);
   assert.equal(verifyExtensionSessionToken(tokenA).installationId, installationA);
   assert.equal(verifyExtensionSessionToken(tokenB).installationId, installationB);
+});
+
+test("rotates refresh tokens and rejects replay", async () => {
+  const { token } = await registerFixtureUser(api);
+  const created = await authorize(token, installationA, "refresh_rotation");
+  const exchanged = await exchange((created.body as { authorizationCode: string }).authorizationCode, installationA);
+  const first = exchanged.body as { accessToken: string; refreshToken: string };
+
+  const rotated = await refresh(first.refreshToken, installationA);
+  assert.equal(rotated.status, 200);
+  const second = rotated.body as { accessToken: string; refreshToken: string };
+  assert.notEqual(second.refreshToken, first.refreshToken);
+  assert.equal((await refresh(first.refreshToken, installationA)).status, 401);
+  assert.equal((await api.request("/auth/me", { headers: authorization(second.accessToken) })).status, 200);
+});
+
+test("logout revokes only the current device session", async () => {
+  const { token } = await registerFixtureUser(api);
+  const createdA = await authorize(token, installationA, "logout_alpha_123");
+  const createdB = await authorize(token, installationB, "logout_beta_1234");
+  const sessionA = (await exchange((createdA.body as { authorizationCode: string }).authorizationCode, installationA)).body as {
+    accessToken: string; refreshToken: string;
+  };
+  const sessionB = (await exchange((createdB.body as { authorizationCode: string }).authorizationCode, installationB)).body as {
+    accessToken: string;
+  };
+
+  assert.equal((await logout(sessionA.accessToken)).status, 204);
+  assert.equal((await api.request("/auth/me", { headers: authorization(sessionA.accessToken) })).status, 401);
+  assert.equal((await refresh(sessionA.refreshToken, installationA)).status, 401);
+  assert.equal((await api.request("/auth/me", { headers: authorization(sessionB.accessToken) })).status, 200);
+});
+
+test("web sessions can list and revoke only their own devices", async () => {
+  const first = await registerFixtureUser(api, "first-device@example.invalid");
+  const second = await registerFixtureUser(api, "second-device@example.invalid");
+  const created = await authorize(first.token, installationA, "managed_device_123");
+  const extension = (await exchange((created.body as { authorizationCode: string }).authorizationCode, installationA)).body as {
+    accessToken: string;
+  };
+  const sessionId = verifyExtensionSessionToken(extension.accessToken).sessionId;
+
+  const listed = await api.request("/extension/sessions", { headers: authorization(first.token) });
+  assert.equal(listed.status, 200);
+  const sessions = (listed.body as { sessions: Array<Record<string, unknown>> }).sessions;
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0].id, sessionId);
+  assert.doesNotMatch(JSON.stringify(sessions), /refreshTokenHash|password|token/i);
+
+  const forbidden = await api.request("/extension/sessions/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authorization(second.token) },
+    body: JSON.stringify({ sessionId }),
+  });
+  assert.equal(forbidden.status, 404);
+
+  const revoked = await api.request("/extension/sessions/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authorization(first.token) },
+    body: JSON.stringify({ sessionId }),
+  });
+  assert.equal(revoked.status, 204);
+  assert.equal((await api.request("/auth/me", { headers: authorization(extension.accessToken) })).status, 401);
+});
+
+test("reconnecting one installation invalidates its previous access token", async () => {
+  const { token } = await registerFixtureUser(api);
+  const firstAuthorization = await authorize(token, installationA, "reconnect_first_1");
+  const first = (await exchange(
+    (firstAuthorization.body as { authorizationCode: string }).authorizationCode,
+    installationA,
+  )).body as { accessToken: string };
+  const secondAuthorization = await authorize(token, installationA, "reconnect_second_2");
+  const second = (await exchange(
+    (secondAuthorization.body as { authorizationCode: string }).authorizationCode,
+    installationA,
+  )).body as { accessToken: string };
+
+  assert.equal((await api.request("/auth/me", { headers: authorization(first.accessToken) })).status, 401);
+  assert.equal((await api.request("/auth/me", { headers: authorization(second.accessToken) })).status, 200);
 });

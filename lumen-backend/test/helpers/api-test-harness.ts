@@ -87,6 +87,7 @@ export async function createTestApi(
     request,
     async resetDatabase() {
       await prisma.analysis.deleteMany();
+      await prisma.extensionSession.deleteMany();
       await prisma.user.deleteMany();
     },
     mockOpenRouter(handler: typeof fetch) {

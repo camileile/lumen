@@ -80,10 +80,12 @@ test("deploys the complete migration chain on an empty database", () => {
 
       assert.ok(tables.includes("User"));
       assert.ok(tables.includes("Analysis"));
+      assert.ok(tables.includes("ExtensionSession"));
       assert.ok(tables.includes("_prisma_migrations"));
       assert.ok(indexes.includes("User_email_nocase_key"));
       assert.ok(indexes.includes("Analysis_userId_createdAt_idx"));
       assert.ok(indexes.includes("Analysis_userId_url_createdAt_idx"));
+      assert.ok(indexes.includes("ExtensionSession_userId_installationId_key"));
     } finally {
       database.close();
     }

@@ -6,7 +6,8 @@ export const JWT_ISSUER = process.env.JWT_ISSUER?.trim() || "lumen-api";
 export const JWT_AUDIENCE = process.env.JWT_AUDIENCE?.trim() || "lumen-web-extension";
 export const JWT_EXPIRES_IN = "7d";
 export const EXTENSION_JWT_AUDIENCE = "lumen-extension-session";
-export const EXTENSION_SESSION_EXPIRES_IN = "24h";
+export const EXTENSION_ACCESS_TOKEN_EXPIRES_IN = "15m";
+export const EXTENSION_ACCESS_TOKEN_EXPIRES_IN_SECONDS = 15 * 60;
 
 function jwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -47,19 +48,20 @@ export function verifyAccessToken(token: string): { userId: string; payload: Jwt
   return { userId: decoded.sub, payload: decoded };
 }
 
-export function signExtensionSessionToken(userId: string, installationId: string): string {
-  return jwt.sign({ tokenUse: "extension", installationId }, jwtSecret(), {
+export function signExtensionSessionToken(userId: string, installationId: string, sessionId: string): string {
+  return jwt.sign({ tokenUse: "extension", installationId, sessionId }, jwtSecret(), {
     algorithm: JWT_ALGORITHM,
     issuer: JWT_ISSUER,
     audience: EXTENSION_JWT_AUDIENCE,
     subject: userId,
-    expiresIn: EXTENSION_SESSION_EXPIRES_IN,
+    expiresIn: EXTENSION_ACCESS_TOKEN_EXPIRES_IN,
   });
 }
 
 export function verifyExtensionSessionToken(token: string): {
   userId: string;
   installationId: string;
+  sessionId: string;
   payload: JwtPayload;
 } {
   let decoded: string | JwtPayload;
@@ -76,18 +78,21 @@ export function verifyExtensionSessionToken(token: string): {
   if (typeof decoded === "string" || decoded.tokenUse !== "extension" ||
       typeof decoded.installationId !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decoded.installationId) ||
+      typeof decoded.sessionId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decoded.sessionId) ||
       typeof decoded.sub !== "string" ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(decoded.sub)) {
     throw new AppError(401, "INVALID_ACCESS_TOKEN", "Token inválido ou expirado");
   }
 
-  return { userId: decoded.sub, installationId: decoded.installationId, payload: decoded };
+  return { userId: decoded.sub, installationId: decoded.installationId, sessionId: decoded.sessionId, payload: decoded };
 }
 
 export function verifyApiToken(token: string): {
   userId: string;
   authKind: "web" | "extension";
   installationId?: string;
+  sessionId?: string;
 } {
   try {
     return { userId: verifyAccessToken(token).userId, authKind: "web" };
@@ -100,5 +105,6 @@ export function verifyApiToken(token: string): {
     userId: extension.userId,
     authKind: "extension",
     installationId: extension.installationId,
+    sessionId: extension.sessionId,
   };
 }

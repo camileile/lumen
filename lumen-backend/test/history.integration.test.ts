@@ -75,7 +75,18 @@ test("deletes only the authenticated user's analysis history", async () => {
   });
 
   assert.equal((await api.request("/history", { method: "DELETE" })).status, 401);
-  const extensionToken = signExtensionSessionToken(first.user.id, "11111111-1111-4111-8111-111111111111");
+  const installationId = "11111111-1111-4111-8111-111111111111";
+  const extensionSessionId = "33333333-3333-4333-8333-333333333333";
+  await api.prisma.extensionSession.create({
+    data: {
+      id: extensionSessionId,
+      installationId,
+      refreshTokenHash: "history-test-refresh-token-hash",
+      expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      userId: first.user.id,
+    },
+  });
+  const extensionToken = signExtensionSessionToken(first.user.id, installationId, extensionSessionId);
   const extensionDelete = await deleteHistory(extensionToken);
   assert.equal(extensionDelete.status, 403);
   assert.equal((extensionDelete.body as { code: string }).code, "WEB_SESSION_REQUIRED");

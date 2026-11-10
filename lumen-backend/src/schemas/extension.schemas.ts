@@ -15,3 +15,12 @@ export const exchangeExtensionAuthorizationSchema = z.object({
   installationId,
   codeVerifier: pkceValue,
 }).strict();
+
+export const refreshExtensionSessionSchema = z.object({
+  installationId,
+  refreshToken: pkceValue,
+}).strict();
+
+export const revokeExtensionSessionSchema = z.object({
+  sessionId: z.string().uuid(),
+}).strict();
