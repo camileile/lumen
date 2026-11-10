@@ -4,7 +4,7 @@
 
 Phase 3 establishes automated regression coverage and Pull Request validation without changing the reliability-score methodology, authentication architecture, database schema, product layout, OpenRouter provider, or deployment process.
 
-Phase 3 grew the initial 14 backend domain tests to 68 automated cases. Subsequent phases expanded that foundation; Phase 7 finishes with 95 backend, 24 frontend, and 21 extension cases (140 total). All fixtures use fictitious `.invalid` identities and example URLs.
+Phase 3 grew the initial 14 backend domain tests to 68 automated cases. Subsequent phases expanded that foundation; Phase 8 finishes with 97 backend, 25 frontend, and 26 extension cases (148 total). All fixtures use fictitious `.invalid` identities and example URLs.
 
 ## Testing Strategy
 
@@ -19,7 +19,7 @@ The repository continues to use the Node.js built-in test runner. TypeScript tes
 
 ## Unit Tests
 
-Backend unit coverage contains 22 cases:
+Backend unit coverage includes:
 
 - the existing score cases for empty, A/B/C/D, mixed values, rounding, clamping, normalization, latest-20 behavior, and thresholds;
 - an explicit `rolling-weight-v1` method-version regression;
@@ -30,7 +30,7 @@ These tests prevent restoration of the old A=100/B=70/C=30/D=10 history formula 
 
 ## Integration Tests
 
-The backend contains 28 API integration cases and 50 backend cases in total.
+The backend suite now contains 97 cases across domain, security, migration, and API integration boundaries.
 
 Authentication coverage:
 
@@ -63,20 +63,24 @@ Authentication coverage:
 - invalid categories are excluded;
 - persisted inconsistent score values do not replace category-derived aggregates;
 - no fabricated dates or sensitive authentication/user fields.
+- authenticated history deletion is restricted to the owning web user and cannot be invoked by an extension session.
 
 ## Extension Tests
 
-Eleven dependency-free JavaScript tests cover:
+Twenty-six dependency-free JavaScript cases cover:
 
 - score method version, weights, empty/homogeneous/mixed histories, rounding, finite values, latest-20 behavior, and thresholds;
 - `bbc.com`, `www.bbc.com`, `news.bbc.com`, uppercase/trailing-dot input, invalid URLs, and unsupported protocols;
-- `bbc.com.attacker.example` and `attacker-bbc.com` remain unknown rather than inheriting category A.
+- `bbc.com.attacker.example` and `attacker-bbc.com` remain unknown rather than inheriting category A;
+- account connection, per-installation sessions, expiration, and the anti-replay handshake;
+- opt-in automatic observation, recognized-source restriction, per-tab duplicate suppression, stale-response protection, and source-origin minimization;
+- local analysis cleanup preserves the account session, installation identifier, and user preferences.
 
 The substring-matching bug was fixed with exact-host-or-subdomain matching. Source lists were not changed. `domain-classifier.js` remains a dependency-free mirror of the backend classifier because the extension still has no build system.
 
 ## Frontend Tests
 
-Seven tests cover the pure dashboard data boundary and API helper:
+Twenty-five tests cover the pure dashboard data boundary, API helper, authorization request parsing, and focused accessible components:
 
 - empty history and “Not enough data yet”;
 - `weeklyAverage: null`;
@@ -84,7 +88,8 @@ Seven tests cover the pure dashboard data boundary and API helper:
 - the API score is consumed directly instead of recalculated;
 - distribution values are preserved;
 - the “Automated estimate”/“Not a fact check” limitation copy;
-- successful API JSON, API errors, and missing API configuration.
+- successful API JSON, API errors, and missing API configuration;
+- form labels, password controls, alerts, loading buttons, dialog keyboard behavior, score/category copy, valid internal navigation, and the explicit history-deletion control.
 
 Large DOM snapshots and component-library dependencies were intentionally avoided. The existing loading state remains protected by lint, typecheck, and build but does not yet have a browser-level interaction test.
 
@@ -104,8 +109,8 @@ Coverage uses Node.js built-in experimental test coverage and has no additional 
 
 | Scope | Lines | Branches | Functions |
 | --- | ---: | ---: | ---: |
-| Backend tested application modules | 96.59% | 81.73% | 91.67% |
-| Frontend `api` and `dashboardData` modules | 100.00% | 80.65% | 83.33% |
+| Backend tested application modules | 95.86% | 86.56% | 98.35% |
+| Frontend configured library modules | 93.87% | 86.15% | 83.33% |
 
 The extension suite currently reports pass/fail without a committed coverage threshold. Coverage is used as evidence for critical modules, not as a target for inflating test counts.
 
@@ -148,6 +153,8 @@ The backend currently reports two documented exception chains:
 The policy is deliberately advisory-specific rather than a blanket package or severity suppression. A newly reported package or a different advisory fails the job.
 
 Phase 7 keeps the same isolated-database strategy and adds migrations as an executable CI contract. Historical validation notes from earlier phases remain in their phase-specific documents.
+
+Phase 8 adds privacy-boundary regressions without changing the CI architecture. The extension-package consistency check now includes `observation-policy.js`.
 
 ## Branch Protection Recommendations
 
