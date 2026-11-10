@@ -110,6 +110,26 @@ To run the extension locally:
 
 The extension's current development manifest allows the local backend at `http://localhost:3000`.
 
+To rebuild the downloadable development ZIP deterministically from the reviewed runtime-file list:
+
+```bash
+node lumen-extension/scripts/package-extension.mjs \
+  --channel development \
+  --output lumen-web/public/lumen-extension.zip
+```
+
+A production package must receive the real deployed HTTPS origins explicitly; the repository does not guess them or commit a production token/configuration:
+
+```bash
+node lumen-extension/scripts/package-extension.mjs \
+  --channel production \
+  --api-url https://api.example.invalid \
+  --dashboard-origin https://app.example.invalid \
+  --output lumen-extension/dist/lumen-extension-production.zip
+```
+
+Replace the `.invalid` examples with the approved deployment origins. Production mode rejects HTTP, paths, credentials, queries, and fragments. The generated ZIP is a CI artifact for review; publishing it to the Chrome Web Store is a separate manual action.
+
 Automatic observation starts disabled. If enabled in the popup, it observes only locally recognized source domains. Other pages require the explicit **Analyze this page** action. Only the source origin is sent to the backend; see `docs/PRIVACY_AND_OBSERVATION_SCOPE.md`.
 
 ## Validation
@@ -151,6 +171,8 @@ node --check lumen-extension/popup.js
 node -e "JSON.parse(require('node:fs').readFileSync('lumen-extension/manifest.json', 'utf8'))"
 node --test lumen-extension/test/*.test.js
 ```
+
+The extension uses 15-minute access tokens in `chrome.storage.session` and rotating 30-day device refresh tokens in restricted `chrome.storage.local`. Connected installations can be reviewed and individually revoked in the dashboard. Apply the additive device-session migration before enabling this flow in a deployed backend; see `docs/PRODUCTION_EXTENSION_AND_DEVICE_SESSIONS.md`.
 
 Pull Requests targeting `main`, pushes to `main`, and a weekly schedule run these validations automatically through `.github/workflows/ci.yml`. See `docs/TESTING_AND_CI_STATUS.md` for the test strategy and `docs/CI_AND_BRANCH_PROTECTION.md` for recommended repository settings.
 

@@ -121,6 +121,6 @@ SQLite/Prisma migrations are forward-only in this repository. Rollback means sto
 
 - Decide whether SQLite remains local/prototype storage or is replaced by a managed relational database for production.
 - Add cursor pagination if the product needs complete historical browsing rather than the current recent-items response.
-- Design persistent per-device extension sessions and revocation only with a reviewed schema migration.
+- Persistent per-device extension sessions and revocation were implemented by Phase 9 through the reviewed additive migration documented in `PRODUCTION_EXTENSION_AND_DEVICE_SESSIONS.md`.
 - Define retention, export, deletion, backup, restore, and disaster-recovery policies.
 - Consider versioned analysis provenance fields in a separate product/data-model decision.

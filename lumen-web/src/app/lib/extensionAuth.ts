@@ -6,6 +6,16 @@ export type ExtensionConnectRequest = {
   codeChallenge: string;
 };
 
+export type ExtensionSessionSummary = {
+  id: string;
+  installationId: string;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: "active" | "revoked" | "expired";
+};
+
 const noncePattern = /^[A-Za-z0-9_-]{16,128}$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const challengePattern = /^[A-Za-z0-9_-]{43}$/;
@@ -36,5 +46,19 @@ export function createExtensionAuthorization(token: string, request: ExtensionCo
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(request),
+  });
+}
+
+export function getExtensionSessions(token: string) {
+  return apiJson<{ sessions: ExtensionSessionSummary[] }>("/extension/sessions", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function revokeExtensionSession(token: string, sessionId: string) {
+  return apiJson<void>("/extension/sessions/revoke", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ sessionId }),
   });
 }

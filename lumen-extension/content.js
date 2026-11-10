@@ -151,9 +151,10 @@ function ensureOverlay(payload, lumePos) {
       isDragging = false;
       lume.style.cursor = "grab";
 
-      chrome.storage.local.set({
-        lumePos: { x: wrap.offsetLeft, y: wrap.offsetTop },
-      });
+      void chrome.runtime.sendMessage({
+        type: "SAVE_OVERLAY_POSITION",
+        position: { x: wrap.offsetLeft, y: wrap.offsetTop },
+      }).catch(() => {});
     });
   }
 
@@ -200,16 +201,8 @@ function escapeHtml(s) {
 }
 
 async function boot() {
-  const st = await chrome.storage.local.get([
-    "score",
-    "category",
-    "summary",
-    "domain",
-    "lastMode",
-    "lumePos",
-    "overlayAtivo",
-    "lastUrl",
-  ]);
+  const response = await chrome.runtime.sendMessage({ type: "GET_CONTENT_STATE" });
+  const st = response?.ok && response.state ? response.state : {};
 
   if (st.overlayAtivo === false) return removeOverlay();
   if (!st.lastUrl || LumenPrivacyUrl.minimizeToSource(window.location.href) !== st.lastUrl) return removeOverlay();
@@ -226,7 +219,7 @@ async function boot() {
   );
 }
 
-boot();
+void boot().catch(() => removeOverlay());
 
 // 3) Atualiza overlay quando o background mandar novo payload
 chrome.runtime.onMessage.addListener((msg) => {
@@ -237,8 +230,9 @@ chrome.runtime.onMessage.addListener((msg) => {
     return;
   }
 
-  chrome.storage.local.get(["lumePos", "overlayAtivo"], (st) => {
+  void chrome.runtime.sendMessage({ type: "GET_CONTENT_STATE" }).then((response) => {
+    const st = response?.ok && response.state ? response.state : {};
     if (st.overlayAtivo === false) return removeOverlay();
     ensureOverlay(msg, st.lumePos);
-  });
+  }).catch(() => removeOverlay());
 });

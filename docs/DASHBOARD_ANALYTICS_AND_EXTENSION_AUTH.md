@@ -107,3 +107,5 @@ Automated coverage includes ISO-week boundaries, partial weeks, gaps, exact posi
 ## Deferred Database Work
 
 A future non-destructive migration should add persistent device sessions with hashed token identifiers, last-used metadata, expiry, and revocation timestamps. That enables listing devices, revoking one installation server-side, refresh-token rotation, and an account-level “sign out all devices” control. No migration was introduced in this phase.
+
+Phase 9 subsequently implemented the persistent per-device session, refresh rotation, listing, logout, and individual revocation portions through an additive migration. See `PRODUCTION_EXTENSION_AND_DEVICE_SESSIONS.md`; account-wide revocation remains deferred.

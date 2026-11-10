@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
+const path = require("node:path");
 const test = require("node:test");
 const {
   createNavigationTracker,
@@ -46,7 +48,16 @@ test("local analysis cleanup does not remove account or preference state", () =>
   assert.ok(localAnalysisKeys.includes("historico"));
   assert.ok(localAnalysisKeys.includes("lastUrl"));
   assert.equal(localAnalysisKeys.includes("lumen_extension_token"), false);
+  assert.equal(localAnalysisKeys.includes("lumen_extension_access_token"), false);
+  assert.equal(localAnalysisKeys.includes("lumen_extension_refresh_token"), false);
   assert.equal(localAnalysisKeys.includes("lumen_installation_id"), false);
   assert.equal(localAnalysisKeys.includes("automaticObservationEnabled"), false);
   assert.equal(localAnalysisKeys.includes("overlayAtivo"), false);
+});
+
+test("content scripts access safe state through the service worker, not protected storage", () => {
+  const source = readFileSync(path.join(__dirname, "..", "content.js"), "utf8");
+  assert.equal(source.includes("chrome.storage."), false);
+  assert.match(source, /GET_CONTENT_STATE/);
+  assert.match(source, /SAVE_OVERLAY_POSITION/);
 });

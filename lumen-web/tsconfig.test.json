@@ -21,6 +21,7 @@
     "src/app/components/auth-controls.tsx",
     "src/app/dashboard/components/tutorial-dialog.tsx",
     "src/app/dashboard/components/history-delete-button.tsx",
+    "src/app/dashboard/components/extension-session-revoke-button.tsx",
     "test/**/*.ts",
     "test/**/*.tsx"
   ],

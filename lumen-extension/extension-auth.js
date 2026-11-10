@@ -7,9 +7,11 @@
 
   const keys = Object.freeze({
     installationId: "lumen_installation_id",
-    token: "lumen_extension_token",
+    accessToken: "lumen_extension_access_token",
+    refreshToken: "lumen_extension_refresh_token",
     account: "lumen_extension_account",
-    expiresAt: "lumen_extension_expires_at",
+    accessExpiresAt: "lumen_extension_access_expires_at",
+    refreshExpiresAt: "lumen_extension_refresh_expires_at",
     pending: "lumen_extension_pending_authorization",
   });
 
@@ -48,32 +50,63 @@
     return pending;
   }
 
-  async function storeSession(storageLocal, session) {
+  async function configureTrustedStorage(storageLocal, storageSession) {
+    await Promise.all([
+      storageLocal?.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" }),
+      storageSession?.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" }),
+    ]);
+  }
+
+  async function storeSession(storageLocal, storageSession, session) {
     await storageLocal.set({
-      [keys.token]: session.token,
+      [keys.refreshToken]: session.refreshToken,
       [keys.account]: session.user,
-      [keys.expiresAt]: session.expiresAt,
+      [keys.refreshExpiresAt]: session.refreshExpiresAt,
     });
-    await storageLocal.remove(["lumen_token"]);
+    await storageSession.set({
+      [keys.accessToken]: session.accessToken,
+      [keys.accessExpiresAt]: session.accessExpiresAt,
+    });
+    await storageLocal.remove(["lumen_token", "lumen_extension_token", "lumen_extension_expires_at"]);
   }
 
   async function clearSession(storageLocal, storageSession) {
-    await storageLocal.remove([keys.token, keys.account, keys.expiresAt, "lumen_token"]);
-    if (storageSession) await storageSession.remove([keys.pending]);
+    await storageLocal.remove([
+      keys.refreshToken,
+      keys.account,
+      keys.refreshExpiresAt,
+      "lumen_token",
+      "lumen_extension_token",
+      "lumen_extension_expires_at",
+    ]);
+    if (storageSession) {
+      await storageSession.remove([keys.accessToken, keys.accessExpiresAt, keys.pending]);
+    }
   }
 
-  async function readSession(storageLocal, now = Date.now()) {
-    const stored = await storageLocal.get([keys.token, keys.account, keys.expiresAt]);
-    const connected = typeof stored[keys.token] === "string" &&
-      typeof stored[keys.expiresAt] === "number" && stored[keys.expiresAt] > now;
-    if (!connected && stored[keys.token]) {
-      await storageLocal.remove([keys.token, keys.account, keys.expiresAt]);
+  async function readSession(storageLocal, storageSession, now = Date.now()) {
+    const [persistent, transient] = await Promise.all([
+      storageLocal.get([keys.refreshToken, keys.account, keys.refreshExpiresAt]),
+      storageSession.get([keys.accessToken, keys.accessExpiresAt]),
+    ]);
+    const refreshAvailable = typeof persistent[keys.refreshToken] === "string" &&
+      typeof persistent[keys.refreshExpiresAt] === "number" && persistent[keys.refreshExpiresAt] > now;
+    const connected = refreshAvailable && typeof transient[keys.accessToken] === "string" &&
+      typeof transient[keys.accessExpiresAt] === "number" && transient[keys.accessExpiresAt] > now;
+    if (!connected && transient[keys.accessToken]) {
+      await storageSession.remove([keys.accessToken, keys.accessExpiresAt]);
+    }
+    if (!refreshAvailable && persistent[keys.refreshToken]) {
+      await clearSession(storageLocal, storageSession);
     }
     return {
       connected,
-      token: connected ? stored[keys.token] : null,
-      user: connected && stored[keys.account] ? stored[keys.account] : null,
-      expiresAt: connected ? stored[keys.expiresAt] : null,
+      canRefresh: refreshAvailable,
+      accessToken: connected ? transient[keys.accessToken] : null,
+      refreshToken: refreshAvailable ? persistent[keys.refreshToken] : null,
+      user: refreshAvailable && persistent[keys.account] ? persistent[keys.account] : null,
+      accessExpiresAt: connected ? transient[keys.accessExpiresAt] : null,
+      refreshExpiresAt: refreshAvailable ? persistent[keys.refreshExpiresAt] : null,
     };
   }
 
@@ -82,6 +115,7 @@
     createPkcePair,
     ensureInstallationId,
     createPendingConnection,
+    configureTrustedStorage,
     storeSession,
     clearSession,
     readSession,

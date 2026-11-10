@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
+  "minimum_chrome_version": "102",
   "name": "Lumen",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Sinais automatizados sobre fontes para apoiar uma navegação mais consciente",
 
   "permissions": ["tabs", "storage"],
@@ -25,7 +26,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["score-contract.js", "handshake-policy.js", "privacy-url.js", "content.js"],
+      "js": ["config.js", "score-contract.js", "handshake-policy.js", "privacy-url.js", "content.js"],
       "run_at": "document_idle"
     }
   ],

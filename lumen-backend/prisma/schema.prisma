@@ -15,6 +15,7 @@ model User {
   createdAt DateTime   @default(now())
 
   analyses  Analysis[]
+  extensionSessions ExtensionSession[]
 }
 
 model Analysis {
@@ -32,4 +33,20 @@ model Analysis {
 
   @@index([userId, createdAt], map: "Analysis_userId_createdAt_idx")
   @@index([userId, url, createdAt], map: "Analysis_userId_url_createdAt_idx")
+}
+
+model ExtensionSession {
+  id               String   @id @default(uuid())
+  installationId   String
+  refreshTokenHash String   @unique
+  createdAt        DateTime @default(now())
+  lastUsedAt       DateTime @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, installationId], map: "ExtensionSession_userId_installationId_key")
+  @@index([userId, revokedAt, createdAt], map: "ExtensionSession_userId_revokedAt_createdAt_idx")
 }
