@@ -1,6 +1,6 @@
-importScripts("score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js", "observation-policy.js", "extension-auth.js");
+importScripts("config.js", "score-contract.js", "domain-classifier.js", "handshake-policy.js", "privacy-url.js", "observation-policy.js", "extension-auth.js");
 
-const API_URL = "http://localhost:3000";
+const API_URL = LumenConfig.apiBaseUrl;
 
 const { categoryWeights, windowSize, calculateScoreFromWeights, scoreState, methodVersion } =
   LumenScoreContract;
@@ -15,6 +15,9 @@ const {
 } = LumenObservationPolicy;
 const connectChallenges = createChallengeRegistry();
 const navigationTracker = createNavigationTracker();
+let refreshPromise = null;
+
+void LumenExtensionAuth.configureTrustedStorage(chrome.storage.local, chrome.storage.session).catch(() => {});
 
 function isExtensionSender(sender) {
   return sender?.id === chrome.runtime.id && String(sender?.url || "").startsWith(`chrome-extension://${chrome.runtime.id}/`);
@@ -89,15 +92,75 @@ async function analyzeLocal(url) {
  * ✅ Chama backend e DEVOLVE a análise final (IA ou fallback do backend)
  * Também serve pra salvar no banco pro dashboard, já que o controller salva.
  */
-async function analyzeRemote(url) {
-  const session = await LumenExtensionAuth.readSession(chrome.storage.local);
-  if (!session.connected) throw new Error("Sem sessão da extensão");
+async function refreshAccountSession() {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    const current = await LumenExtensionAuth.readSession(chrome.storage.local, chrome.storage.session);
+    if (!current.canRefresh || !current.refreshToken) throw new Error("Sem sessão renovável da extensão");
+    const installationId = await LumenExtensionAuth.ensureInstallationId(chrome.storage.local);
+    const response = await fetch(`${API_URL}/extension/session/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ installationId, refreshToken: current.refreshToken }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 400 || response.status === 401) {
+      await LumenExtensionAuth.clearSession(chrome.storage.local, chrome.storage.session);
+      throw new Error("Não foi possível renovar a sessão da extensão");
+    }
+    if (!response.ok) throw new Error("Serviço de sessão temporariamente indisponível");
+    if (typeof data?.accessToken !== "string" || typeof data?.refreshToken !== "string") {
+      await LumenExtensionAuth.clearSession(chrome.storage.local, chrome.storage.session);
+      throw new Error("Resposta de sessão inválida");
+    }
+    await storeAccountSession(data);
+    return LumenExtensionAuth.readSession(chrome.storage.local, chrome.storage.session);
+  })().finally(() => { refreshPromise = null; });
+  return refreshPromise;
+}
 
-  const res = await fetch(`${API_URL}/analyze`, {
+async function currentAccountSession() {
+  const session = await LumenExtensionAuth.readSession(chrome.storage.local, chrome.storage.session);
+  if (session.connected) return session;
+  if (session.canRefresh) return refreshAccountSession();
+  throw new Error("Sem sessão da extensão");
+}
+
+async function authenticatedFetch(path, init) {
+  let session = await currentAccountSession();
+  const request = (accessToken) => fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: { ...(init?.headers || {}), Authorization: `Bearer ${accessToken}` },
+  });
+  let response = await request(session.accessToken);
+  if (response.status === 401 && session.canRefresh) {
+    session = await refreshAccountSession();
+    response = await request(session.accessToken);
+  }
+  return response;
+}
+
+async function storeAccountSession(data) {
+  const accessExpiresInSeconds = Number(data.accessExpiresInSeconds);
+  const refreshExpiresAt = Date.parse(data.refreshExpiresAt);
+  if (!Number.isSafeInteger(accessExpiresInSeconds) || accessExpiresInSeconds <= 0 ||
+      !Number.isFinite(refreshExpiresAt) || !data.user) {
+    throw new Error("Resposta de sessão inválida");
+  }
+  await LumenExtensionAuth.storeSession(chrome.storage.local, chrome.storage.session, {
+    accessToken: data.accessToken,
+    refreshToken: data.refreshToken,
+    user: data.user,
+    accessExpiresAt: Date.now() + accessExpiresInSeconds * 1000,
+    refreshExpiresAt,
+  });
+}
+
+async function analyzeRemote(url) {
+  const res = await authenticatedFetch("/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${session.token}`,
     },
     body: JSON.stringify({ url }),
   });
@@ -242,14 +305,54 @@ function isTrustedPageSender(sender, pathname) {
   return isTrustedDashboardUrl(sender?.url ?? "", pathname);
 }
 
+function isContentScriptSender(sender) {
+  return sender?.id === chrome.runtime.id && Number.isInteger(sender?.tab?.id);
+}
+
+async function safeContentState() {
+  return chrome.storage.local.get([
+    "score",
+    "category",
+    "summary",
+    "domain",
+    "lastMode",
+    "lumePos",
+    "overlayAtivo",
+    "lastUrl",
+  ]);
+}
+
 async function accountStatus() {
-  const session = await LumenExtensionAuth.readSession(chrome.storage.local);
+  let session;
+  try {
+    session = await currentAccountSession();
+  } catch {
+    return { ok: true, connected: false };
+  }
   if (!session.connected) return { ok: true, connected: false };
-  return { ok: true, connected: true, user: session.user, expiresAt: session.expiresAt };
+  return { ok: true, connected: true, user: session.user, expiresAt: session.refreshExpiresAt };
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
+    if (msg.type === "GET_CONTENT_STATE") {
+      if (!isContentScriptSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
+      sendResponse({ ok: true, state: await safeContentState() });
+      return;
+    }
+
+    if (msg.type === "SAVE_OVERLAY_POSITION") {
+      if (!isContentScriptSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
+      const x = Number(msg.position?.x);
+      const y = Number(msg.position?.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > 100_000 || y > 100_000) {
+        return sendResponse({ ok: false, error: "Invalid position" });
+      }
+      await chrome.storage.local.set({ lumePos: { x: Math.round(x), y: Math.round(y) } });
+      sendResponse({ ok: true });
+      return;
+    }
+
     if (msg.type === "START_ACCOUNT_CONNECTION") {
       if (!isExtensionSender(sender) && !isTrustedPageSender(sender, "/dashboard")) {
         return sendResponse({ ok: false, error: "Invalid sender" });
@@ -268,6 +371,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
     if (msg.type === "LOGOUT_EXTENSION") {
       if (!isExtensionSender(sender)) return sendResponse({ ok: false, error: "Invalid sender" });
+      try {
+        const session = await currentAccountSession();
+        if (session.accessToken) {
+          await fetch(`${API_URL}/extension/session/logout`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.accessToken}` },
+          });
+        }
+      } catch {
+        // Local cleanup still runs when the server session already expired or is unavailable.
+      }
       await LumenExtensionAuth.clearSession(chrome.storage.local, chrome.storage.session);
       sendResponse({ ok: true });
       return;
@@ -326,14 +440,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || typeof data?.token !== "string" || !data?.user) {
+      if (!response.ok || typeof data?.accessToken !== "string" || typeof data?.refreshToken !== "string" || !data?.user) {
         return sendResponse({ ok: false, error: "Authorization exchange failed" });
       }
-      await LumenExtensionAuth.storeSession(chrome.storage.local, {
-        token: data.token,
-        user: data.user,
-        expiresAt: Date.now() + Number(data.expiresInSeconds || 0) * 1000,
-      });
+      await storeAccountSession(data);
       await chrome.storage.session.remove([LumenExtensionAuth.keys.pending]);
       sendResponse({ ok: true, user: data.user });
       return;

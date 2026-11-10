@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { describe, test } = require("node:test");
 const policy = require("../handshake-policy.js");
+const { loadExtensionScript } = require("./load-extension-script");
 
 const challenge = "challenge_nonce_1234567890";
 const context = {
@@ -14,6 +15,15 @@ describe("extension dashboard handshake", () => {
     assert.equal(policy.isTrustedOrigin("http://localhost:3001"), true);
     assert.equal(policy.isTrustedOrigin("http://localhost:3001.attacker.example"), false);
     assert.equal(policy.isTrustedOrigin("https://attacker.example"), false);
+  });
+
+  test("uses the exact packaged production dashboard origin", () => {
+    const production = loadExtensionScript("handshake-policy.js", "LumenHandshakePolicy", {
+      LumenConfig: { dashboardOrigin: "https://lumen.example" },
+    });
+    assert.equal(production.isTrustedOrigin("https://lumen.example"), true);
+    assert.equal(production.isTrustedOrigin("http://localhost:3001"), false);
+    assert.equal(production.isTrustedOrigin("https://lumen.example.attacker.invalid"), false);
   });
 
   test("rejects malformed authorization payloads", () => {

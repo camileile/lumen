@@ -6,11 +6,13 @@ function storage() {
   const values = {};
   return {
     values,
+    accessLevel: null,
     async get(keys) {
       return Object.fromEntries(keys.filter((key) => key in values).map((key) => [key, values[key]]));
     },
     async set(next) { Object.assign(values, next); },
     async remove(keys) { for (const key of keys) delete values[key]; },
+    async setAccessLevel(options) { this.accessLevel = options.accessLevel; },
   };
 }
 
@@ -23,35 +25,57 @@ test("creates and reuses a non-secret random installation identifier", async () 
   assert.equal(calls, 1);
 });
 
-test("stores the bearer session only in local storage and logout preserves server data", async () => {
+test("stores access and refresh credentials in separate protected storage areas", async () => {
   const local = storage();
   const session = storage();
   const sync = { calls: 0, async set() { this.calls += 1; } };
-  await extensionAuth.storeSession(local, {
-    token: "extension-session-token",
+  await extensionAuth.configureTrustedStorage(local, session);
+  await extensionAuth.storeSession(local, session, {
+    accessToken: "extension-access-token",
+    refreshToken: "extension-refresh-token",
     user: { name: "Test User", email: "test@example.invalid" },
-    expiresAt: 10_000,
+    accessExpiresAt: 10_000,
+    refreshExpiresAt: 20_000,
   });
 
   assert.equal(sync.calls, 0);
-  assert.equal((await extensionAuth.readSession(local, 1_000)).connected, true);
+  assert.equal(local.accessLevel, "TRUSTED_CONTEXTS");
+  assert.equal(session.accessLevel, "TRUSTED_CONTEXTS");
+  assert.equal(local.values[extensionAuth.keys.accessToken], undefined);
+  assert.equal(local.values[extensionAuth.keys.refreshToken], "extension-refresh-token");
+  assert.equal(session.values[extensionAuth.keys.accessToken], "extension-access-token");
+  assert.equal((await extensionAuth.readSession(local, session, 1_000)).connected, true);
   await extensionAuth.clearSession(local, session);
-  assert.equal((await extensionAuth.readSession(local, 1_000)).connected, false);
+  assert.equal((await extensionAuth.readSession(local, session, 1_000)).connected, false);
 });
 
 test("two devices keep distinct local sessions for the same account", async () => {
   const deviceA = storage();
   const deviceB = storage();
+  const transientA = storage();
+  const transientB = storage();
   const user = { name: "Test User", email: "test@example.invalid" };
-  await extensionAuth.storeSession(deviceA, { token: "token-a", user, expiresAt: 10_000 });
-  await extensionAuth.storeSession(deviceB, { token: "token-b", user, expiresAt: 10_000 });
+  await extensionAuth.storeSession(deviceA, transientA, {
+    accessToken: "token-a", refreshToken: "refresh-a", user, accessExpiresAt: 10_000, refreshExpiresAt: 20_000,
+  });
+  await extensionAuth.storeSession(deviceB, transientB, {
+    accessToken: "token-b", refreshToken: "refresh-b", user, accessExpiresAt: 10_000, refreshExpiresAt: 20_000,
+  });
 
-  assert.equal((await extensionAuth.readSession(deviceA, 1_000)).token, "token-a");
-  assert.equal((await extensionAuth.readSession(deviceB, 1_000)).token, "token-b");
+  assert.equal((await extensionAuth.readSession(deviceA, transientA, 1_000)).accessToken, "token-a");
+  assert.equal((await extensionAuth.readSession(deviceB, transientB, 1_000)).accessToken, "token-b");
+  assert.notEqual(deviceA.values[extensionAuth.keys.refreshToken], deviceB.values[extensionAuth.keys.refreshToken]);
 });
 
-test("expired local sessions are reported as disconnected", async () => {
+test("an expired access token remains refreshable until the device session expires", async () => {
   const local = storage();
-  await extensionAuth.storeSession(local, { token: "expired", user: {}, expiresAt: 999 });
-  assert.equal((await extensionAuth.readSession(local, 1_000)).connected, false);
+  const session = storage();
+  await extensionAuth.storeSession(local, session, {
+    accessToken: "expired", refreshToken: "refreshable", user: {}, accessExpiresAt: 999, refreshExpiresAt: 2_000,
+  });
+  const state = await extensionAuth.readSession(local, session, 1_000);
+  assert.equal(state.connected, false);
+  assert.equal(state.canRefresh, true);
+  assert.equal(state.refreshToken, "refreshable");
+  assert.equal(session.values[extensionAuth.keys.accessToken], undefined);
 });

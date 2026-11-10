@@ -1,11 +1,11 @@
 (function (root, factory) {
-  const api = factory();
+  const api = factory(root.LumenConfig);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.LumenHandshakePolicy = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (config) {
   "use strict";
 
-  const trustedDashboardOrigin = "http://localhost:3001";
+  const trustedDashboardOrigin = config?.dashboardOrigin || "http://localhost:3001";
   const challengeTtlMs = 60_000;
   const maxPendingChallenges = 128;
 
