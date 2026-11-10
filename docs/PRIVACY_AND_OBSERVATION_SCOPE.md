@@ -82,7 +82,7 @@ Before real-user production, the owner must define:
 - The editorial source list remains small and duplicated between backend and extension.
 - Manual analysis of an unknown domain still produces category B when the provider is unavailable; the existing UI must continue describing B as neutral/unknown, not trusted.
 - Existing historical rows are not automatically minimized.
-- Extension configuration is still development-only (`localhost`).
+- Phase 9 adds explicit per-environment extension packaging; real production origins still require owner approval.
 - The backend does not yet provide data export or account deletion.
 - The service worker keeps deduplication state in memory rather than persistent storage.
 
@@ -90,7 +90,7 @@ Before real-user production, the owner must define:
 
 - Retention enforcement after an explicit product/legal decision.
 - Export and account deletion endpoints.
-- Persistent server-side device sessions and revocation.
+- Account-wide device revocation and richer device naming remain deferred; Phase 9 adds per-device sessions, logout, listing, and individual revocation.
 - Central generation of the shared source list and privacy contract.
-- Production extension packaging/configuration and Web Store review.
+- Final production-origin approval and Chrome Web Store review/publication.
 - Provider/model governance and analysis provenance fields.
