@@ -2,6 +2,7 @@ import { NOT_ENOUGH_DATA_COPY } from "@/app/lib/dashboardData";
 import { CATEGORY_PRESENTATION } from "@/app/lib/ui";
 import type { DashboardData } from "@/app/lib/types";
 import { ChartDataTable, WeeklyBars } from "./dashboard-charts";
+import { HistoryDeleteButton } from "./history-delete-button";
 import styles from "../dashboard.module.css";
 
 export function HistorySummaryCard({ data }: { data: DashboardData }) {
@@ -33,12 +34,21 @@ export function WeeklyAverageCard({ data }: { data: DashboardData }) {
   </section>;
 }
 
-export function RecentSources({ data }: { data: DashboardData }) {
+export function RecentSources({ data, canDelete, deleting, onDelete }: {
+  data: DashboardData;
+  canDelete: boolean;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
   return <section className={`${styles.card} ${styles.historyCard}`} data-anchor="history" aria-labelledby="recent-title">
-    <h3 id="recent-title">Fontes observadas recentemente</h3>
+    <div className={styles.cardTitleRow}>
+      <h3 id="recent-title">Fontes observadas recentemente</h3>
+      {canDelete && data.lastAccess.length > 0 && <HistoryDeleteButton className={styles.dangerBtn}
+        deleting={deleting} onDelete={onDelete} />}
+    </div>
     <div className={styles.historyList}>
       {data.lastAccess.length === 0 ? <div className={styles.emptyBox} role="status">
-        <strong>Nenhuma análise ainda</strong><p>Quando a extensão analisar uma URL, a observação aparecerá aqui.</p>
+        <strong>Nenhuma análise ainda</strong><p>Quando você analisar uma fonte, a observação aparecerá aqui.</p>
       </div> : data.lastAccess.map((item) => <article key={item.id} className={styles.historyItem}>
         <div className={`${styles.letter} ${styles[`letter_${item.label}`]}`} aria-hidden="true">{item.label}</div>
         <div className={styles.historyText}>

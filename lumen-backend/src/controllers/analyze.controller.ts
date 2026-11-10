@@ -11,7 +11,7 @@ import {
 } from "../domain/score";
 import { findRecentValidCategories } from "../repositories/analysis.repository";
 import { classifyHostname } from "../domain/source-classifier";
-import { sanitizeAnalysisUrl } from "../security/analysis-url";
+import { minimizeAnalysisUrl, sanitizeAnalysisUrl } from "../security/analysis-url";
 import { AppError } from "../security/app-error";
 
 const AUTOMATED_ESTIMATE_NOTICE =
@@ -47,7 +47,8 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     const { url: rawUrl } = req.body as { url?: unknown };
     if (!req.userId) throw new AppError(401, "AUTHENTICATION_REQUIRED", "Não autenticado");
 
-    const { url, hostname: domain } = sanitizeAnalysisUrl(rawUrl);
+    const { url: sanitizedUrl, hostname: domain } = sanitizeAnalysisUrl(rawUrl);
+    const url = minimizeAnalysisUrl(sanitizedUrl);
     const configuredDuplicateWindow = Number(process.env.ANALYZE_DUPLICATE_WINDOW_SECONDS);
     const duplicateWindowSeconds = Number.isSafeInteger(configuredDuplicateWindow) && configuredDuplicateWindow > 0
       ? configuredDuplicateWindow
@@ -68,7 +69,7 @@ export async function analyzeController(req: AuthedRequest, res: Response) {
     let modelUsed: string | undefined;
 
     try {
-      const ai = await openrouterAnalyze({ url, domain });
+      const ai = await openrouterAnalyze({ domain });
       category = ai.category;
       // The provider's numeric score is intentionally not persisted or exposed. The category is
       // the only AI input to the canonical rolling-weight-v1 behavioral score.

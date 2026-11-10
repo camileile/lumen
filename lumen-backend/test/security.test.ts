@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { MAX_ANALYSIS_URL_LENGTH, sanitizeAnalysisUrl } from "../src/security/analysis-url";
+import { MAX_ANALYSIS_URL_LENGTH, minimizeAnalysisUrl, sanitizeAnalysisUrl } from "../src/security/analysis-url";
 import { isForbiddenHostname, isForbiddenIpAddress, validateResolvedAddresses } from "../src/security/ssrf-policy";
 import { MemoryRateLimitStore } from "../src/middleware/rateLimit.middleware";
 import { allowedCorsOrigins } from "../src/security/cors";
@@ -37,6 +37,11 @@ describe("analysis URL policy", () => {
 
   test("allows deceptive public-looking hosts without treating them as an internal address", () => {
     assert.equal(sanitizeAnalysisUrl("https://bbc.com.attacker.example/a").hostname, "bbc.com.attacker.example");
+  });
+
+  test("minimizes persisted and provider URLs to source origin", () => {
+    const sanitized = sanitizeAnalysisUrl("https://www.Example.com/private/path?q=personal#fragment");
+    assert.equal(minimizeAnalysisUrl(sanitized.url), "https://example.com/");
   });
 });
 

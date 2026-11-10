@@ -16,6 +16,13 @@ export type SanitizedAnalysisUrl = {
   hostname: string;
 };
 
+export function minimizeAnalysisUrl(value: string): string {
+  const parsed = new URL(value);
+  const hostname = normalizeHostname(parsed.hostname);
+  const port = parsed.port ? `:${parsed.port}` : "";
+  return `${parsed.protocol}//${hostname}${port}/`;
+}
+
 export function sanitizeAnalysisUrl(value: unknown): SanitizedAnalysisUrl {
   if (typeof value !== "string" || !value.trim()) {
     throw new AppError(400, "INVALID_URL", "URL inválida");

@@ -67,11 +67,15 @@ test("rejects invalid or unsupported URLs", async () => {
 
 test("persists a valid provider category with the canonical score", async () => {
   const { token } = await registerFixtureUser(api);
-  api.mockOpenRouter(async () => providerResponse("A", 2));
+  let providerRequestBody = "";
+  api.mockOpenRouter(async (_input, init) => {
+    providerRequestBody = String(init?.body ?? "");
+    return providerResponse("A", 2);
+  });
 
-  const response = await analyze(token, { url: "https://news.example/article-1" });
+  const response = await analyze(token, { url: "https://news.example/private/article-1?q=personal" });
   const body = response.body as {
-    analysis: { category: string; score: number; domain: string };
+    analysis: { category: string; score: number; domain: string; url: string };
     methodology: { version: string };
   };
 
@@ -79,6 +83,9 @@ test("persists a valid provider category with the canonical score", async () => 
   assert.equal(body.analysis.category, "A");
   assert.equal(body.analysis.score, 100);
   assert.equal(body.analysis.domain, "news.example");
+  assert.equal(body.analysis.url, "https://news.example/");
+  assert.match(providerRequestBody, /news\.example/);
+  assert.doesNotMatch(providerRequestBody, /private|article-1|personal/);
   assert.equal(body.methodology.version, "rolling-weight-v1");
   assert.equal(await api.prisma.analysis.count(), 1);
 });
@@ -216,7 +223,7 @@ test("rejects an invalid provider category and oversized provider response throu
     status: 200,
     headers: { "Content-Type": "application/json", "Content-Length": "70000" },
   }));
-  const oversized = await analyze(token, { url: "https://example.com/oversized" });
+  const oversized = await analyze(token, { url: "https://oversized.example/response" });
   assert.equal(oversized.status, 200);
   assert.equal((oversized.body as { mode: string }).mode, "local-fallback");
 });

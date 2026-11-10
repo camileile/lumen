@@ -3,6 +3,7 @@ import test from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AuthSubmitButton, FormAlert, PasswordField } from "../src/app/components/auth-controls";
 import { TutorialDialog, type TourStep } from "../src/app/dashboard/components/tutorial-dialog";
+import { HistoryDeleteButton } from "../src/app/dashboard/components/history-delete-button";
 import { getDialogKeyAction, restoreFocus } from "../src/app/lib/ui";
 
 const authStyles = { label: "label", input: "input", passwordWrap: "wrap", showBtn: "toggle" };
@@ -75,4 +76,10 @@ test("closing a dialog restores focus", () => {
   let focused = false;
   restoreFocus({ focus: () => { focused = true; } });
   assert.equal(focused, true);
+});
+
+test("history deletion is an explicit disabled-capable button", () => {
+  const html = renderToStaticMarkup(<HistoryDeleteButton deleting onDelete={noop} />);
+  assert.match(html, /<button[^>]*disabled=""/);
+  assert.match(html, /Excluir histórico|Excluindo/);
 });

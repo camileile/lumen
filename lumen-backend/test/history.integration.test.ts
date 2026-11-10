@@ -6,6 +6,7 @@ import {
   registerFixtureUser,
   type TestApi,
 } from "./helpers/api-test-harness";
+import { signExtensionSessionToken } from "../src/security/jwt";
 
 let api: TestApi;
 
@@ -23,6 +24,10 @@ after(async () => {
 
 async function history(token: string) {
   return api.request("/history", { headers: authorization(token) });
+}
+
+async function deleteHistory(token: string) {
+  return api.request("/history", { method: "DELETE", headers: authorization(token) });
 }
 
 function analysisFixture(userId: string, input: {
@@ -47,6 +52,38 @@ function analysisFixture(userId: string, input: {
 test("rejects history access without authentication", async () => {
   const response = await api.request("/history");
   assert.equal(response.status, 401);
+});
+
+test("deletes only the authenticated user's analysis history", async () => {
+  const first = await registerFixtureUser(api, "first@example.invalid");
+  const second = await registerFixtureUser(api, "second@example.invalid");
+  await api.prisma.analysis.createMany({
+    data: [
+      analysisFixture(first.user.id, {
+        id: "first-analysis",
+        category: "A",
+        score: 100,
+        createdAt: "2026-09-01T00:00:00.000Z",
+      }),
+      analysisFixture(second.user.id, {
+        id: "second-analysis",
+        category: "B",
+        score: 75,
+        createdAt: "2026-09-02T00:00:00.000Z",
+      }),
+    ],
+  });
+
+  assert.equal((await api.request("/history", { method: "DELETE" })).status, 401);
+  const extensionToken = signExtensionSessionToken(first.user.id, "11111111-1111-4111-8111-111111111111");
+  const extensionDelete = await deleteHistory(extensionToken);
+  assert.equal(extensionDelete.status, 403);
+  assert.equal((extensionDelete.body as { code: string }).code, "WEB_SESSION_REQUIRED");
+  const response = await deleteHistory(first.token);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body, { deletedCount: 1 });
+  assert.equal(await api.prisma.analysis.count({ where: { userId: first.user.id } }), 0);
+  assert.equal(await api.prisma.analysis.count({ where: { userId: second.user.id } }), 1);
 });
 
 test("returns an honest empty state for zero observations", async () => {

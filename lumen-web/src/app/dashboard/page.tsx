@@ -70,6 +70,7 @@ export default function DashboardPage() {
     </p>}
 
     {!dashboard.demo && dashboard.error && <DashboardError message={dashboard.error} onRetry={() => void dashboard.refresh()} />}
+    {!dashboard.demo && dashboard.notice && <p className={styles.statusSuccess} role="status">{dashboard.notice}</p>}
     {!dashboard.demo && dashboard.loading && !dashboard.error && <DashboardLoading />}
 
     {(dashboard.demo || dashboard.hasLoaded) && <main className={styles.grid} aria-busy={dashboard.loading}>
@@ -80,7 +81,11 @@ export default function DashboardPage() {
       <HistorySummaryCard data={dashboard.data} />
       <DistributionCard distribution={dashboard.data.distribution} />
       <WeeklyAverageCard data={dashboard.data} />
-      <RecentSources data={dashboard.data} />
+      <RecentSources data={dashboard.data} canDelete={!dashboard.demo} deleting={dashboard.deleting} onDelete={() => {
+        if (window.confirm("Excluir permanentemente todo o histórico de análises desta conta?")) {
+          void dashboard.clearHistory();
+        }
+      }} />
       <HelpCard onOpenTutorial={() => setTourOpen(true)} />
     </main>}
 
