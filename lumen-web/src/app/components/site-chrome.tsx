@@ -8,10 +8,11 @@ import { SITE_LINKS } from "@/app/lib/site-navigation";
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   if (pathname.startsWith("/dashboard")) return <>{children}</>;
+  const isLanding = pathname === "/";
 
   return (
     <>
-      <header className="siteHeader">
+      <header className={`siteHeader${isLanding ? " siteHeaderLanding" : ""}`}>
         <div className="container siteHeaderInner">
           <Link className="siteBrand" href="/" aria-label="Lumen — página inicial">
             <Image src="/logo-lumen.png" alt="" width={36} height={36} priority />
@@ -22,13 +23,13 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
               <Link key={link.href} className="siteNavLink" href={link.href}>{link.label}</Link>
             ))}
             <a className="siteInstallLink" href="/lumen-extension.zip" download="Lumen-Extension.zip">
-              Instalar extensão
+              Baixar extensão
             </a>
           </nav>
         </div>
       </header>
       <main>{children}</main>
-      <footer className="footer">
+      <footer className={`footer${isLanding ? " footerLanding" : ""}`}>
         <div className="footerContainer">
           <div className="footerBrand">
             <div className="footerLogo">
