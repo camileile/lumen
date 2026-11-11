@@ -9,11 +9,11 @@ export function ScoreLine({ data, showAxis = false }: { data: ChartPoint[]; show
   return <div className={styles.chartVisual} aria-hidden="true">
     <ResponsiveContainer width="100%" height="100%" minWidth={0}>
       <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: showAxis ? 25 : 5 }}>
-        <CartesianGrid strokeOpacity={0.12} vertical={false} />
+        <CartesianGrid stroke="rgba(255,255,255,0.10)" vertical={false} />
         <XAxis dataKey="day" hide={!showAxis} axisLine={false} tickLine={false}
           tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 11 }} interval={0} dy={10} />
-        <Tooltip contentStyle={{ background: "#1a1c23", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 10, fontSize: 12, color: "#fff" }} itemStyle={{ color: "#78ffa0" }} />
-        <Line type="monotone" dataKey="value" stroke="#78ffa0" strokeWidth={3} dot={false}
+        <Tooltip contentStyle={{ background: "#111720", border: "1px solid rgba(124,246,202,0.18)", borderRadius: 12, fontSize: 12, color: "#fff", boxShadow: "0 16px 40px rgba(0,0,0,.35)" }} itemStyle={{ color: "#7cf6ca" }} />
+        <Line type="monotone" dataKey="value" stroke="#7cf6ca" strokeWidth={3} dot={{ r: 3, fill: "#151b25", stroke: "#7cf6ca", strokeWidth: 2 }}
           connectNulls={false} activeDot={{ r: 4, strokeWidth: 0 }} />
       </LineChart>
     </ResponsiveContainer>
@@ -29,7 +29,7 @@ export function WeeklyBars({ data }: { data: ChartPoint[] }) {
           tick={{ fill: "rgba(255,255,255,0.7)", fontSize: 10 }} interval={0} dy={10} />
         <Tooltip cursor={{ fill: "rgba(255,255,255,0.05)" }}
           contentStyle={{ background: "#1a1c23", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 10, color: "#fff" }} />
-        <Bar dataKey="value" fill="#78ffa0" radius={[4, 4, 0, 0]} barSize={20} opacity={0.85} />
+        <Bar dataKey="value" fill="#7cf6ca" radius={[6, 6, 2, 2]} barSize={24} opacity={0.92} />
       </BarChart>
     </ResponsiveContainer>
   </div>;

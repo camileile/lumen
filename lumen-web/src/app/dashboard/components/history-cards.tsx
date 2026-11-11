@@ -10,7 +10,7 @@ export function HistorySummaryCard({ data }: { data: DashboardData }) {
   const available = trend.direction !== "insufficient";
   const direction = trend.direction === "up" ? "Subindo" : trend.direction === "down" ? "Descendo" : "Sem mudança";
   const symbol = trend.direction === "up" ? "↑" : trend.direction === "down" ? "↓" : "→";
-  return <section className={`${styles.card} ${styles.smallCard}`} aria-labelledby="history-summary-title">
+  return <section className={`${styles.card} ${styles.smallCard} ${styles.trendCard}`} aria-labelledby="history-summary-title">
     <h3 id="history-summary-title">Tendência</h3>
     {!available ? <div className={styles.miniEmpty} role="status"><span>Dados insuficientes para tendência</span></div> : <div className={styles.trendSummary}>
       <strong className={styles.trendDirection}><span aria-hidden="true">{symbol}</span> {direction}</strong>
@@ -24,7 +24,7 @@ export function HistorySummaryCard({ data }: { data: DashboardData }) {
 }
 
 export function WeeklyAverageCard({ data }: { data: DashboardData }) {
-  return <section className={`${styles.card} ${styles.smallCard}`} aria-labelledby="weekly-title">
+  return <section className={`${styles.card} ${styles.smallCard} ${styles.weeklyCard}`} aria-labelledby="weekly-title">
     <h3 id="weekly-title">Média semanal</h3>
     <div className={styles.weekValue} aria-label={data.weeklyAverage === null ? "Média indisponível" : `Média ${data.weeklyAverage}`}>{data.weeklyAverage ?? "—"}</div>
     {data.weeklySeries.length === 0 ? <div className={styles.miniEmpty} role="status"><span>{NOT_ENOUGH_DATA_COPY}</span></div> : <>
@@ -62,6 +62,7 @@ export function RecentSources({ data, canDelete, deleting, onDelete }: {
 
 export function HelpCard({ onOpenTutorial }: { onOpenTutorial: () => void }) {
   return <section className={`${styles.card} ${styles.actionsCard}`} data-anchor="actions" aria-labelledby="help-title">
+    <p className={styles.cardEyebrow}>Precisa de contexto?</p>
     <h3 id="help-title">Ajuda</h3>
     <p className={styles.helpText}>Entenda o score, as categorias e os dados exibidos sem sair do dashboard.</p>
     <button className={styles.tourBtn} type="button" onClick={onOpenTutorial}>Abrir tutorial</button>

@@ -23,6 +23,7 @@ export function MascotCard({ data, demo, name, draftName, editingName, onDraftNa
 }) {
   const firstTime = data.score === null;
   return <section className={`${styles.card} ${styles.avatarCard}`} aria-labelledby="mascot-title">
+    <p className={styles.cardEyebrow}>Seu companheiro digital</p>
     <div className={styles.avatarTop}>
       {!editingName ? <>
         <span id="mascot-title" className={styles.userName}>{name}</span>
