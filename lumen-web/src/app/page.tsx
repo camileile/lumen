@@ -14,6 +14,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { LandingMotion } from "./components/landing-motion";
 import styles from "./page.module.css";
 
 const signalCategories = [
@@ -25,7 +26,9 @@ const signalCategories = [
 
 export default function Home() {
   return (
-    <div className={styles.page}>
+    <div id="landing-page" className={styles.page}>
+      <LandingMotion />
+      <div className={styles.scrollProgress} aria-hidden="true" />
       <div className={styles.ambient} aria-hidden="true">
         <span className={styles.ambientOne} />
         <span className={styles.ambientTwo} />
@@ -88,7 +91,7 @@ export default function Home() {
       </section>
 
       <div>
-        <section id="como-funciona" className={`${styles.section} ${styles.reveal}`} aria-labelledby="how-title">
+        <section id="como-funciona" className={`${styles.section} ${styles.reveal}`} data-reveal="up" aria-labelledby="how-title">
           <div className={styles.sectionHeading}>
             <p className={styles.kicker}>Como funciona</p>
             <h2 id="how-title">Uma camada de consciência entre você e o próximo clique.</h2>
@@ -117,7 +120,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={`${styles.signalSection} ${styles.reveal}`} aria-labelledby="signals-title">
+        <section className={`${styles.signalSection} ${styles.reveal}`} data-reveal="split" aria-labelledby="signals-title">
           <div className={styles.signalIntro}>
             <p className={styles.kicker}>Clareza sobre o score</p>
             <h2 id="signals-title">Cor ajuda. Contexto explica.</h2>
@@ -148,7 +151,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={`${styles.dashboardSection} ${styles.reveal}`} aria-labelledby="dashboard-title">
+        <section className={`${styles.dashboardSection} ${styles.reveal}`} data-reveal="split-reverse" aria-labelledby="dashboard-title">
           <div className={styles.dashboardCopy}>
             <p className={styles.kicker}>Seu histórico, com honestidade</p>
             <h2 id="dashboard-title">Dados observados.<br />Nada de tendências inventadas.</h2>
@@ -177,7 +180,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="privacidade" className={`${styles.privacySection} ${styles.reveal}`} aria-labelledby="privacy-title">
+        <section id="privacidade" className={`${styles.privacySection} ${styles.reveal}`} data-reveal="split" aria-labelledby="privacy-title">
           <div className={styles.privacyVisual}>
             <div className={styles.privacyHalo} aria-hidden="true" />
             <Image className={styles.privacyImage} src="/privacy.png" alt="Mascote Lumen diante de um cadeado"
@@ -200,14 +203,15 @@ export default function Home() {
           </div>
         </section>
 
-        <section className={`${styles.finalCta} ${styles.reveal}`} aria-labelledby="cta-title">
+        <section className={`${styles.finalCta} ${styles.reveal}`} data-reveal="scale" aria-labelledby="cta-title">
           <div className={styles.ctaGlow} aria-hidden="true" />
+          <div className={styles.ctaBadge}><span aria-hidden="true" /> Extensão para Chrome e Chromium</div>
           <p className={styles.kicker}>Um olhar mais consciente</p>
           <h2 id="cta-title">Sua navegação já conta uma história.<br />Comece a enxergá-la.</h2>
           <p>Instale a extensão, conecte sua conta e acompanhe sinais reais da sua rotina digital.</p>
           <div className={styles.ctaActions}>
             <a className={styles.primaryButton} href="/lumen-extension.zip" download="Lumen-Extension.zip">
-              <Download size={18} aria-hidden="true" /> Baixar extensão
+              <Download size={18} aria-hidden="true" /> Baixar extensão (.zip)
             </a>
             <Link className={styles.secondaryButton} href="/login">
               Entrar no Lumen <ArrowRight size={17} aria-hidden="true" />

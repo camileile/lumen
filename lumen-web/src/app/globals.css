@@ -39,7 +39,18 @@ a {
 .siteNav { gap: 18px; }
 .siteNavLink { color: #e7ecff; padding: 8px 2px; }
 .siteNavLink:hover { text-decoration: underline; text-underline-offset: 5px; }
-.siteInstallLink { background: #356bd9; padding: 9px 14px; font-weight: 700; border-radius: 10px; color: white; box-shadow: 0 10px 30px rgba(40,92,201,.3); }
+.siteInstallLink {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #79f5cb, #02d091);
+  padding: 9px 15px;
+  font-weight: 800;
+  border-radius: 10px;
+  color: #061b16;
+  box-shadow: 0 10px 30px rgba(2,208,145,.22);
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+.siteInstallLink:hover { transform: translateY(-2px); box-shadow: 0 14px 38px rgba(2,208,145,.34); filter: brightness(1.05); }
 
 .container {
   width: min(1100px, 92%);
@@ -188,6 +199,14 @@ a {
   margin-top: 40px;
   font-size: 13px;
   opacity: 0.6;
+}
+
+.footerLanding {
+  margin-top: 0;
+  background:
+    radial-gradient(circle at 15% 0%, rgba(2, 208, 145, 0.08), transparent 28rem),
+    #111620;
+  border-top-color: rgba(124, 246, 202, 0.1);
 }
 
 /* ===== RESPONSIVO GLOBAL ===== */
