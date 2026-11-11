@@ -5,7 +5,7 @@ import styles from "../dashboard.module.css";
 const letters: LabelABCD[] = ["A", "B", "C", "D"];
 
 export function DistributionCard({ distribution }: { distribution: DashboardData["distribution"] }) {
-  return <section className={`${styles.card} ${styles.smallCard}`} data-anchor="distribution" aria-labelledby="distribution-title">
+  return <section className={`${styles.card} ${styles.smallCard} ${styles.distributionCard}`} data-anchor="distribution" aria-labelledby="distribution-title">
     <h3 id="distribution-title">Distribuição A/B/C/D</h3>
     {distribution.length === 0 ? <div className={styles.placeholderBox} role="status">
       <strong>Sem dados de distribuição</strong><p>Analise algumas URLs para ver as categorias observadas.</p>

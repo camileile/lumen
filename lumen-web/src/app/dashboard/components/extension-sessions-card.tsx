@@ -14,7 +14,7 @@ export function ExtensionSessionsCard({ sessions, loading, error, revokingId, on
   onRefresh: () => void;
   onRevoke: (sessionId: string) => void;
 }) {
-  return <section className={`${styles.card} ${styles.historyCard}`} aria-labelledby="extension-sessions-title">
+  return <section className={`${styles.card} ${styles.historyCard} ${styles.extensionCard}`} aria-labelledby="extension-sessions-title">
     <div className={styles.cardTitleRow}>
       <div>
         <h3 id="extension-sessions-title">Extensões conectadas</h3>

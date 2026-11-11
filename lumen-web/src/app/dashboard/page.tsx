@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Activity, Database, ShieldCheck } from "lucide-react";
 import { AUTOMATED_ESTIMATE_COPY } from "@/app/lib/dashboardData";
 import { DashboardHeader } from "./components/dashboard-header";
 import { DashboardError, DashboardLoading } from "./components/dashboard-states";
@@ -63,10 +64,33 @@ export default function DashboardPage() {
   if (!dashboard.ready || !dashboard.user) return <DashboardLoading />;
 
   return <div className={styles.page}>
+    <div className={styles.dashboardAmbient} aria-hidden="true" />
     <DashboardHeader user={dashboard.user} demo={dashboard.demo} loading={dashboard.loading}
       extensionState={extension.state} extensionIdentity={extension.identity}
       onToggleDemo={() => dashboard.setDemoMode(!dashboard.demo)} onConnect={() => void extension.connect()}
       onRefresh={() => void dashboard.refresh()} onLogout={dashboard.logout} />
+
+    <section className={styles.dashboardIntro} aria-labelledby="dashboard-title">
+      <div className={styles.introCopy}>
+        <p className={styles.introEyebrow}><span /> Painel de consciência digital</p>
+        <h1 id="dashboard-title">Olá, {dashboard.user.name.split(" ")[0]}.<br />Este é o seu panorama digital.</h1>
+        <p>Acompanhe sinais reais da sua navegação com contexto, sem transformar uma estimativa automatizada em veredito.</p>
+      </div>
+      <div className={styles.methodSummary} aria-label="Como os dados deste painel são organizados">
+        <div className={styles.methodItem}>
+          <Activity aria-hidden="true" />
+          <span><strong>rolling-weight-v1</strong><small>Metodologia atual</small></span>
+        </div>
+        <div className={styles.methodItem}>
+          <Database aria-hidden="true" />
+          <span><strong>Até 20 observações</strong><small>Janela da estimativa</small></span>
+        </div>
+        <div className={styles.methodItem}>
+          <ShieldCheck aria-hidden="true" />
+          <span><strong>Dados observados</strong><small>Sem histórico inventado</small></span>
+        </div>
+      </div>
+    </section>
 
     {extension.state === "error" && <p className={styles.statusError} role="alert">
       Não foi possível iniciar a conexão. Abra o popup da extensão ou tente novamente.
@@ -76,7 +100,7 @@ export default function DashboardPage() {
     {!dashboard.demo && dashboard.notice && <p className={styles.statusSuccess} role="status">{dashboard.notice}</p>}
     {!dashboard.demo && dashboard.loading && !dashboard.error && <DashboardLoading />}
 
-    {(dashboard.demo || dashboard.hasLoaded) && <main className={styles.grid} aria-busy={dashboard.loading}>
+    {(dashboard.demo || dashboard.hasLoaded) && <main className={`${styles.grid} ${dashboard.demo ? styles.demoGrid : ""}`} aria-busy={dashboard.loading}>
       <MascotCard data={dashboard.data} demo={dashboard.demo} name={name} draftName={draftName} editingName={editingName}
         onDraftName={setDraftName} onStartEdit={() => { setDraftName(name); setEditingName(true); }}
         onCancelEdit={() => { setDraftName(name); setEditingName(false); }} onSaveName={saveName} />
