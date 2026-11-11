@@ -69,6 +69,7 @@
 .finalCta {
   width: min(1200px, calc(100% - 48px));
   margin-inline: auto;
+  scroll-margin-top: 88px;
 }
 
 .hero {
@@ -589,29 +590,202 @@
   backdrop-filter: blur(8px);
 }
 
-.privacySection { grid-template-columns: minmax(360px, 0.88fr) minmax(0, 1.12fr); }
+.privacySection {
+  position: relative;
+  grid-template-columns: minmax(420px, 0.98fr) minmax(0, 1.02fr);
+  padding: clamp(2.1rem, 4vw, 3.7rem);
+  overflow: hidden;
+  border: 1px solid rgba(124, 246, 202, 0.1);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 8% 90%, rgba(2, 208, 145, 0.1), transparent 28rem),
+    linear-gradient(135deg, rgba(30, 38, 50, 0.82), rgba(17, 23, 33, 0.9));
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.035);
+}
+
+.privacySection::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image:
+    linear-gradient(rgba(124, 246, 202, 0.45) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 246, 202, 0.45) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(90deg, black, transparent 58%);
+}
 
 .privacyVisual {
   position: relative;
-  min-height: 490px;
   display: grid;
   place-items: center;
 }
 
-.privacyHalo {
-  position: absolute;
-  width: min(85%, 440px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(95, 141, 255, 0.18), transparent 65%);
+.privacyConsole {
+  position: relative;
+  width: 100%;
+  padding: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 20px;
+  background: rgba(10, 15, 23, 0.78);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.38), 0 0 70px rgba(2, 208, 145, 0.05);
+  backdrop-filter: blur(18px);
 }
 
-.privacyImage {
-  position: relative;
-  width: min(480px, 100%);
-  height: auto;
-  filter: drop-shadow(0 30px 65px rgba(0, 0, 0, 0.4));
+.privacyConsole::after {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  right: -100px;
+  bottom: -110px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: var(--landing-green);
+  filter: blur(75px);
+  opacity: 0.12;
 }
+
+.privacyConsoleHeader,
+.privacyConsoleHeader > span,
+.privacyStatus,
+.privacyStatus > span,
+.privacyUrlInput code,
+.privacyUrlOutput code,
+.privacyChecklist span {
+  display: flex;
+  align-items: center;
+}
+
+.privacyConsoleHeader {
+  justify-content: space-between;
+  padding: 0.15rem 0.2rem 0.85rem;
+  color: #dce5f1;
+  font-size: 0.72rem;
+}
+
+.privacyConsoleHeader > span { gap: 0.5rem; }
+.privacyConsoleHeader i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--landing-green);
+  box-shadow: 0 0 12px var(--landing-green);
+}
+.privacyConsoleHeader small {
+  color: #727f92;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.privacyStatus {
+  position: relative;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(124, 246, 202, 0.12);
+  border-radius: 14px;
+  background: linear-gradient(110deg, rgba(2, 208, 145, 0.08), rgba(95, 141, 255, 0.045));
+}
+
+.privacyStatusIcon {
+  width: 44px;
+  height: 44px;
+  display: grid !important;
+  place-items: center;
+  flex: none;
+  color: var(--landing-green-soft);
+  border-radius: 12px;
+  background: rgba(2, 208, 145, 0.1);
+}
+.privacyStatus strong,
+.privacyStatus small { display: block; }
+.privacyStatus strong { color: #f6f8ff; font-size: 0.82rem; }
+.privacyStatus small { margin-top: 0.2rem; color: #8f9bae; font-size: 0.62rem; }
+.activeLabel {
+  margin-left: auto;
+  padding: 0.3rem 0.48rem;
+  color: var(--landing-green-soft);
+  border: 1px solid rgba(124, 246, 202, 0.14);
+  border-radius: 999px;
+  background: rgba(2, 208, 145, 0.06);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.privacyUrlFlow { padding: 0.95rem 0 0.8rem; }
+.privacyUrlInput,
+.privacyUrlOutput {
+  padding: 0.78rem 0.85rem;
+  border-radius: 12px;
+}
+.privacyUrlInput {
+  color: #7f8999;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+.privacyUrlOutput {
+  color: #a7b2c3;
+  border: 1px solid rgba(124, 246, 202, 0.14);
+  background: rgba(2, 208, 145, 0.055);
+}
+.privacyUrlInput > span,
+.privacyUrlOutput > span {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.privacyUrlInput code,
+.privacyUrlOutput code {
+  gap: 0.45rem;
+  overflow: hidden;
+  color: #9ba6b6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.privacyUrlOutput code { color: var(--landing-green-soft); }
+
+.minimizeStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.42rem 0;
+  color: #667286;
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.privacyChecklist {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.privacyChecklist span {
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 42px;
+  padding: 0.55rem 0.45rem;
+  color: #a8b3c3;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.56rem;
+  line-height: 1.3;
+  text-align: center;
+}
+.privacyChecklist svg { flex: none; color: var(--landing-green-soft); }
 
 .privacyPoints { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 1.7rem 0; }
 
@@ -780,6 +954,11 @@
   .privacySection,
   .finalCta { width: min(100% - 32px, 720px); }
 
+  .section,
+  .signalSection,
+  .dashboardSection,
+  .privacySection { scroll-margin-top: 172px; }
+
   .hero { min-height: auto; padding-top: 4rem; }
   .heroContent { grid-template-columns: 1fr; }
   .heroVisual { min-height: 500px; }
@@ -793,7 +972,7 @@
   .signalSection,
   .privacySection { grid-template-columns: 1fr; }
   .signalPanel { order: -1; }
-  .privacyVisual { min-height: 420px; }
+  .privacySection { padding: 1.5rem; }
   .privacyCopy { max-width: 680px; }
 }
 
@@ -827,7 +1006,10 @@
   .signalRow { grid-template-columns: 42px 1fr; padding: 0.75rem; }
   .signalBadge { width: 38px; height: 38px; }
   .dashboardVisual { border-radius: 14px; }
-  .privacyVisual { min-height: 330px; }
+  .privacySection { padding: 0.8rem; border-radius: 20px; }
+  .privacyConsole { padding: 0.75rem; border-radius: 16px; }
+  .privacyChecklist { grid-template-columns: 1fr; }
+  .privacyChecklist span { justify-content: flex-start; min-height: 0; }
   .finalCta { border-radius: 20px; padding-inline: 1rem; }
 }
 

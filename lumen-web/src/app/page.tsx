@@ -10,7 +10,9 @@ import {
   Fingerprint,
   Gauge,
   LockKeyhole,
+  Link2,
   ScanSearch,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -181,10 +183,39 @@ export default function Home() {
         </section>
 
         <section id="privacidade" className={`${styles.privacySection} ${styles.reveal}`} data-reveal="split" aria-labelledby="privacy-title">
-          <div className={styles.privacyVisual}>
-            <div className={styles.privacyHalo} aria-hidden="true" />
-            <Image className={styles.privacyImage} src="/privacy.png" alt="Mascote Lumen diante de um cadeado"
-              width={1000} height={1000} sizes="(max-width: 800px) 78vw, 460px" />
+          <div className={styles.privacyVisual} aria-label="Exemplo visual da minimização de uma URL pelo Lumen">
+            <div className={styles.privacyConsole}>
+              <div className={styles.privacyConsoleHeader}>
+                <span><i aria-hidden="true" /><strong>Privacy guard</strong></span>
+                <small>Exemplo ilustrativo</small>
+              </div>
+
+              <div className={styles.privacyStatus}>
+                <span className={styles.privacyStatusIcon}><ShieldCheck size={27} aria-hidden="true" /></span>
+                <span><strong>Somente o necessário</strong><small>Processamento limitado à origem da fonte</small></span>
+                <span className={styles.activeLabel}>Ativo</span>
+              </div>
+
+              <div className={styles.privacyUrlFlow}>
+                <div className={styles.privacyUrlInput}>
+                  <span>URL recebida</span>
+                  <code><Link2 size={14} aria-hidden="true" /> news.example/artigo?session=•••#comentarios</code>
+                </div>
+                <div className={styles.minimizeStep} aria-hidden="true">
+                  <span>minimização</span><ArrowDown size={16} />
+                </div>
+                <div className={styles.privacyUrlOutput}>
+                  <span>Origem usada na análise</span>
+                  <code><CircleCheck size={15} aria-hidden="true" /> https://news.example/</code>
+                </div>
+              </div>
+
+              <div className={styles.privacyChecklist} aria-label="Proteções aplicadas à URL">
+                <span><CircleCheck size={14} aria-hidden="true" /> Fragmento removido</span>
+                <span><CircleCheck size={14} aria-hidden="true" /> Query sensível removida</span>
+                <span><CircleCheck size={14} aria-hidden="true" /> Credenciais rejeitadas</span>
+              </div>
+            </div>
           </div>
           <div className={styles.privacyCopy}>
             <p className={styles.kicker}>Privacidade e controle</p>
